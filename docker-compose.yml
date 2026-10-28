@@ -1,0 +1,31 @@
+services:
+  db:
+    image: postgres:16.4
+    environment:
+      POSTGRES_USER: tutor
+      POSTGRES_PASSWORD: tutor
+      POSTGRES_DB: tutor
+    ports: ["5432:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+
+  backend:
+    build: ./src/backend
+    environment:
+      DATABASE_URL: postgresql+psycopg://tutor:tutor@db:5432/tutor
+      SLM_PROVIDER: mock          # set to "http" + SLM_URL once the SLM service exists
+      CORS_ORIGINS: http://localhost:5173
+    ports: ["8000:8000"]
+    depends_on: [db]
+
+  frontend:
+    image: node:20.18-alpine
+    working_dir: /app
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+    environment:
+      API_URL: http://backend:8000
+    volumes: [./src/frontend:/app, /app/node_modules]
+    ports: ["5173:5173"]
+    depends_on: [backend]
+
+volumes:
+  pgdata:
