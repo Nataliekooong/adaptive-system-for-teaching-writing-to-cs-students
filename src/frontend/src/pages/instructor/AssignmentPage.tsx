@@ -47,7 +47,8 @@ export default function AssignmentPage() {
   const id = Number(aid);
   const nav = useNavigate();
   const toast = useToast();
-  const { toggleSidebar, registry } = useInstructor();
+  const { toggleSidebar, registry, reloadCourses } = useInstructor();
+  const [confirming, setConfirming] = useState(false);
   const [tab, setTab] = useState("overview");
   const det = useLoad(() => api.get<Detail>(`/api/instructor/assignments/${id}`), [id]);
   const course = useLoad(
@@ -79,6 +80,16 @@ export default function AssignmentPage() {
     }
   };
 
+  const remove = async () => {
+    try {
+      await api.del(`/api/instructor/assignments/${id}`);
+      reloadCourses();
+      nav(`/i/courses/${c.id}/assignments`);
+    } catch (e) {
+      toast((e as Error).message, true);
+    }
+  };
+
   const saveBar = (
     <div className="row" style={{ position: "sticky", top: 0, background: "#fff", padding: "8px 0", zIndex: 2 }}>
       <span className="spacer" />
@@ -96,6 +107,7 @@ export default function AssignmentPage() {
           { label: "Assignments", icon: "📝", to: `/i/courses/${c.id}/assignments` },
           { label: a.title },
         ]}
+        right={<button className="btn danger" onClick={() => setConfirming(true)}>Delete</button>}
       />
       <div className="content">
         <div className="page wide">
@@ -153,6 +165,17 @@ export default function AssignmentPage() {
           {tab === "effective" && <EffectivePanel a={a} />}
         </div>
       </div>
+      {confirming && (
+        <Modal onClose={() => setConfirming(false)}>
+          <h2 style={{ marginTop: 0 }}>Delete {a.title}?</h2>
+          <p className="muted">This removes the assignment and its drafts, submissions, feedback and assignment-scoped experiments. Research logs stay.</p>
+          <div className="row">
+            <span className="spacer" />
+            <button className="btn" onClick={() => setConfirming(false)}>Cancel</button>
+            <button className="btn danger" onClick={remove}>Delete</button>
+          </div>
+        </Modal>
+      )}
     </>
   );
 }

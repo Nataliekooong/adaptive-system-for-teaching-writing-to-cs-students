@@ -1,7 +1,8 @@
+import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api } from "../../api";
 import type { Course } from "../../types";
-import { Loading, PageHeader, Prop, Props, Tag, Topbar, useLoad, Views } from "../../ui";
+import { Loading, Modal, PageHeader, Prop, Props, Tag, Topbar, useLoad, useToast, Views } from "../../ui";
 import { COURSE_TABS, useInstructor } from "./InstructorLayout";
 import {
   AssignmentsTab,
@@ -17,17 +18,30 @@ export default function CoursePage() {
   const { cid, tab = "assignments" } = useParams();
   const courseId = Number(cid);
   const nav = useNavigate();
-  const { toggleSidebar, courses } = useInstructor();
+  const toast = useToast();
+  const { toggleSidebar, courses, reloadCourses } = useInstructor();
   const course = useLoad(() => api.get<Course>(`/api/instructor/courses/${courseId}`), [courseId]);
   const summary = courses.find((c) => c.id === courseId);
   const c = course.data;
   const current = COURSE_TABS.find((t) => t.key === tab) ?? COURSE_TABS[0];
+  const [confirming, setConfirming] = useState(false);
+
+  const remove = async () => {
+    try {
+      await api.del(`/api/instructor/courses/${courseId}`);
+      reloadCourses();
+      nav("/i");
+    } catch (e) {
+      toast((e as Error).message, true);
+    }
+  };
 
   return (
     <>
       <Topbar
         onToggleSidebar={toggleSidebar}
         crumbs={[{ label: c?.code ?? "…", icon: "🎓", to: `/i/courses/${courseId}` }, { label: current.label, icon: current.icon }]}
+        right={c && <button className="btn danger" onClick={() => setConfirming(true)}>Delete</button>}
       />
       <div className="content">
         {!c ? <Loading error={course.error} /> : (
@@ -53,6 +67,17 @@ export default function CoursePage() {
           </div>
         )}
       </div>
+      {confirming && c && (
+        <Modal onClose={() => setConfirming(false)}>
+          <h2 style={{ marginTop: 0 }}>Delete {c.code}?</h2>
+          <p className="muted">This removes the course and its assignments, enrollments, experiments and drafts. Research logs stay.</p>
+          <div className="row">
+            <span className="spacer" />
+            <button className="btn" onClick={() => setConfirming(false)}>Cancel</button>
+            <button className="btn danger" onClick={remove}>Delete</button>
+          </div>
+        </Modal>
+      )}
     </>
   );
 }

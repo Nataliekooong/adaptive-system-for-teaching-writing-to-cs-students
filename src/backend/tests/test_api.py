@@ -12,7 +12,9 @@ from fastapi.testclient import TestClient  # noqa: E402
 from app import modules  # noqa: E402
 from app.db import Base, SessionLocal, engine  # noqa: E402
 from app.main import app  # noqa: E402
-from app.models import BanditDecision  # noqa: E402
+from sqlalchemy import select  # noqa: E402
+
+from app.models import BanditDecision, EventLog  # noqa: E402
 
 LONG_DRAFT = (
     "Our system is really slow. Caching is a good thing.\n\n"
@@ -321,3 +323,49 @@ def test_event_log_uses_pseudonyms(client):
     events = client.get(f"/api/instructor/courses/{course['id']}/events", headers=inst).json()
     assert events and all(e["pseudonym"].startswith(("S-", "I-")) for e in events)
     assert all("priya" not in str(e) for e in events)
+
+
+def test_instructor_can_delete_course(client):
+    inst = login(client, "drlee")
+    created = client.post("/api/instructor/courses", headers=inst,
+                          json={"code": "CS 1AA3", "title": "Scratch"}).json()
+    cid = created["id"]
+    assert client.delete(f"/api/instructor/courses/{cid}", headers=inst).json() == {"ok": True}
+    assert client.get(f"/api/instructor/courses/{cid}", headers=inst).status_code == 404
+    assert cid not in [c["id"] for c in client.get("/api/instructor/courses", headers=inst).json()]
+
+
+def test_delete_course_clears_work_keeps_event_logs(client):
+    inst, stu = login(client, "drlee"), login(client, "priya")
+    course, a = course_and_assignment(client, inst)
+    client.put(f"/api/student/assignments/{a['id']}/draft", headers=stu, json={"content": "hello", "kind": "manual"})
+    cid = course["id"]
+    assert client.delete(f"/api/instructor/courses/{cid}", headers=inst).status_code == 200
+    assert client.get(f"/api/instructor/assignments/{a['id']}", headers=inst).status_code == 404
+    with SessionLocal() as db:
+        types = [e.type for e in db.scalars(select(EventLog).where(EventLog.course_id == cid))]
+    assert "course_deleted" in types
+
+
+def test_student_cannot_delete_course(client):
+    inst, stu = login(client, "drlee"), login(client, "priya")
+    course, _ = course_and_assignment(client, inst)
+    assert client.delete(f"/api/instructor/courses/{course['id']}", headers=stu).status_code == 403
+
+
+def test_instructor_can_delete_assignment(client):
+    inst, stu = login(client, "drlee"), login(client, "priya")
+    course, _ = course_and_assignment(client, inst)
+    created = client.post(f"/api/instructor/courses/{course['id']}/assignments", headers=inst,
+                          json={"title": "Scratch assignment"}).json()
+    aid = created["id"]
+    client.put(f"/api/student/assignments/{aid}/draft", headers=stu, json={"content": "hello", "kind": "manual"})
+    assert client.delete(f"/api/instructor/assignments/{aid}", headers=inst).json() == {"ok": True}
+    assert client.get(f"/api/instructor/assignments/{aid}", headers=inst).status_code == 404
+    assert client.get(f"/api/instructor/courses/{course['id']}", headers=inst).status_code == 200
+    leftover = [x["id"] for x in client.get(f"/api/instructor/courses/{course['id']}/assignments", headers=inst).json()]
+    assert aid not in leftover
+    with SessionLocal() as db:
+        types = [e.type for e in db.scalars(select(EventLog).where(EventLog.assignment_id == aid))]
+    assert "assignment_deleted" in types
+    assert client.delete(f"/api/instructor/assignments/{leftover[0]}", headers=stu).status_code == 403

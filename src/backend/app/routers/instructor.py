@@ -7,7 +7,7 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from .. import modules
@@ -86,6 +86,42 @@ def _course_out(c: Course) -> dict:
     return {"id": c.id, "code": c.code, "title": c.title, "rubric_areas": c.rubric_areas, "config": c.config}
 
 
+def _purge_experiments(db: Session, exp_ids: list[int]) -> None:
+    if not exp_ids:
+        return
+    cond_ids = list(db.scalars(select(Condition.id).where(Condition.experiment_id.in_(exp_ids))))
+    db.execute(delete(ConditionAssignment).where(ConditionAssignment.experiment_id.in_(exp_ids)))
+    if cond_ids:
+        db.execute(delete(Condition).where(Condition.id.in_(cond_ids)))
+    db.execute(delete(Experiment).where(Experiment.id.in_(exp_ids)))
+
+
+def _purge_assignment(db: Session, a: Assignment) -> None:
+    """Remove an assignment and its operational rows. Event logs stay (append-only, §8.2)."""
+    draft_ids = list(db.scalars(select(Draft.id).where(Draft.assignment_id == a.id)))
+    db.execute(delete(FeedbackItem).where(FeedbackItem.assignment_id == a.id))
+    db.execute(delete(Submission).where(Submission.assignment_id == a.id))
+    if draft_ids:
+        db.execute(delete(DraftVersion).where(DraftVersion.draft_id.in_(draft_ids)))
+        db.execute(delete(Draft).where(Draft.id.in_(draft_ids)))
+    db.execute(delete(BanditDecision).where(BanditDecision.assignment_id == a.id))
+    db.execute(delete(AssignmentStudent).where(AssignmentStudent.assignment_id == a.id))
+    _purge_experiments(db, list(db.scalars(select(Experiment.id).where(Experiment.assignment_id == a.id))))
+    db.delete(a)
+
+
+def _purge_course(db: Session, c: Course) -> None:
+    """Remove a course and its operational rows. Event logs stay (append-only, §8.2)."""
+    for a in list(db.scalars(select(Assignment).where(Assignment.course_id == c.id))):
+        _purge_assignment(db, a)
+    _purge_experiments(db, list(db.scalars(select(Experiment.id).where(Experiment.course_id == c.id))))
+    db.execute(delete(BanditDecision).where(BanditDecision.course_id == c.id))
+    db.execute(delete(BanditArmState).where(BanditArmState.course_id == c.id))
+    db.execute(delete(FixedPrompt).where(FixedPrompt.course_id == c.id))
+    db.execute(delete(Enrollment).where(Enrollment.course_id == c.id))
+    db.delete(c)
+
+
 # ---------------------------------------------------------------- courses
 
 @router.get("/courses")
@@ -139,6 +175,15 @@ def update_course(course_id: int, body: CoursePatch, user: User = Depends(requir
         log_event(db, user, "config_changed", {"layer": "course", "config": c.config}, c.id, commit=False)
     db.commit()
     return _course_out(c)
+
+
+@router.delete("/courses/{course_id}")
+def delete_course(course_id: int, user: User = Depends(require_instructor), db: Session = Depends(get_db)):
+    c = _course(db, user, course_id)
+    log_event(db, user, "course_deleted", {"code": c.code, "title": c.title}, c.id, commit=False)
+    _purge_course(db, c)
+    db.commit()
+    return {"ok": True}
 
 
 @router.get("/courses/{course_id}/students")
@@ -318,6 +363,16 @@ def update_assignment(assignment_id: int, body: AssignmentPatch, user: User = De
             setattr(a, k, v)
     db.commit()
     return assignment_out(a)
+
+
+@router.delete("/assignments/{assignment_id}")
+def delete_assignment(assignment_id: int, user: User = Depends(require_instructor),
+                      db: Session = Depends(get_db)):
+    a = _assignment(db, user, assignment_id)
+    log_event(db, user, "assignment_deleted", {"title": a.title}, a.course_id, a.id, commit=False)
+    _purge_assignment(db, a)
+    db.commit()
+    return {"ok": True}
 
 
 class AssignStudentIn(BaseModel):
