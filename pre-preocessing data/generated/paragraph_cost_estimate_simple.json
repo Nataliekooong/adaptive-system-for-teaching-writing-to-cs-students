@@ -1,0 +1,26 @@
+{
+  "version": "paragraph_single_pass_v1",
+  "model": "deepseek-flash",
+  "datasets": {
+    "persuade": {
+      "paragraphs": 24781,
+      "requests": 8509,
+      "input_tokens_estimate": 12771755,
+      "output_tokens_estimate": 1486860,
+      "usd_off_peak": 2.8079,
+      "usd_peak": 5.6158
+    },
+    "sefora": {
+      "paragraphs": 8186,
+      "requests": 820,
+      "input_tokens_estimate": 2952848,
+      "output_tokens_estimate": 491160,
+      "usd_off_peak": 0.7376,
+      "usd_peak": 1.4752
+    }
+  },
+  "assumptions": "Single generation, no reviewer/retries; input chars/3.5, no cache discount; output tokens per target includes JSON.",
+  "output_tokens_per_target": 60,
+  "total_usd_off_peak": 3.5455,
+  "total_usd_peak": 7.091
+}
