@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { api, getToken } from "../../api";
 import { countOverrides, fmtDate } from "../../config";
 import { ModuleConfigEditor, OverrideSummary, moduleIcon } from "../../components/ModuleConfigEditor";
-import type { Assignment, ConfigOverrides, Course, Experiment, Feedback, UserRef } from "../../types";
+import type { Assignment, ConfigOverrides, Course, Experiment, UserRef } from "../../types";
 import { Board, Callout, Loading, Modal, STATUS_COLORS, Switch, Tag, useLoad, useToast } from "../../ui";
 import { useInstructor } from "./InstructorLayout";
 
@@ -174,68 +174,7 @@ export function ModulesTab({ course, onSaved }: { course: Course; onSaved: () =>
   );
 }
 
-/* ---------------------------------------------------------------- review queue (I9) */
-
-interface ReviewItem {
-  feedback: Feedback; assignment: { id: number; title: string }; student_pseudonym: string; before: string; after: string;
-}
-
-export function ReviewTab({ course }: { course: Course }) {
-  const toast = useToast();
-  const q = useLoad(() => api.get<{ pending_total: number; items: ReviewItem[] }>(`/api/instructor/courses/${course.id}/review-queue`), [course.id]);
-  const [done, setDone] = useState<Record<number, number>>({});
-  const rate = async (fid: number, rating: number) => {
-    try {
-      await api.post(`/api/instructor/feedback/${fid}/rating`, { rating });
-      setDone({ ...done, [fid]: rating });
-    } catch (e) {
-      toast((e as Error).message, true);
-    }
-  };
-  if (!q.data) return <Loading error={q.error} />;
-  return (
-    <>
-      <Callout icon="⭐">
-        Rate how much each AI feedback item helped the student's revision. Your rating is combined with the student's
-        own rating to reward the feedback-style bandit. You see a random sample of at most 5 — {q.data.pending_total} waiting in total.
-        Busy? Set <b>Bandit reward → Reward source</b> to <i>student only</i> or rely on the instructor timeout.
-      </Callout>
-      <div className="row" style={{ margin: "8px 0" }}><span className="spacer" />
-        <button className="btn outline" onClick={() => { setDone({}); q.reload(); }}>🔀 New sample</button></div>
-      {q.data.items.length === 0 && <div className="empty">Nothing to review — revisions appear here after students revise in response to feedback.</div>}
-      {q.data.items.map((it) => (
-        <div key={it.feedback.id} className="fb-card" style={{ padding: 16 }}>
-          <div className="row small" style={{ marginBottom: 8 }}>
-            <Tag color="gray">{it.student_pseudonym}</Tag>
-            <Tag color="gray">📝 {it.assignment.title}</Tag>
-            {it.feedback.style && <Tag color="blue">style: {it.feedback.style}</Tag>}
-            <Tag color="gray">{it.feedback.model_version}</Tag>
-            <span className="spacer" /><span className="faint">{fmtDate(it.feedback.created_at, true)}</span>
-          </div>
-          <div className="chat-bubble" style={{ marginBottom: 10 }}>
-            <b>{it.feedback.content.summary}</b>
-            {it.feedback.content.items.map((x, i) => (
-              <div key={i} style={{ marginTop: 4 }}><Tag color="purple">{x.rubric_area}</Tag> {x.comment} <span className="muted">{x.suggestion}</span></div>
-            ))}
-          </div>
-          <div className="diff">
-            <div><div className="small muted" style={{ marginBottom: 4 }}>Before feedback</div><pre>{it.before}</pre></div>
-            <div><div className="small muted" style={{ marginBottom: 4 }}>After revision</div><pre>{it.after}</pre></div>
-          </div>
-          <div className="row" style={{ marginTop: 10 }}>
-            <span className="muted">How helpful was this feedback?</span>
-            {done[it.feedback.id] ? <Tag color="green">Rated {done[it.feedback.id]}/5 ✓</Tag> : (
-              <div className="stars">
-                {[1, 2, 3, 4, 5].map((n) => <button key={n} onClick={() => rate(it.feedback.id, n)}>{n}</button>)}
-              </div>
-            )}
-            <span className="faint small">1 = not at all · 5 = very</span>
-          </div>
-        </div>
-      ))}
-    </>
-  );
-}
+export { ReviewTab } from "./ReviewTab";
 
 /* ---------------------------------------------------------------- students */
 

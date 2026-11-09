@@ -38,6 +38,7 @@ from ..serializers import assignment_out, feedback_out, iso, version_out
 from ..services import bandit, pipeline
 from ..services.config_resolver import pick_condition, resolve_for_assignment
 from ..services.events import log_event
+from ..services.revisions import revision_history
 
 router = APIRouter(prefix="/api/instructor", tags=["instructor"])
 
@@ -437,6 +438,10 @@ def submissions(assignment_id: int, user: User = Depends(require_instructor), db
 def student_work(assignment_id: int, student_id: int, user: User = Depends(require_instructor),
                  db: Session = Depends(get_db)):
     a = _assignment(db, user, assignment_id)
+    link = db.scalar(select(AssignmentStudent).where(AssignmentStudent.assignment_id == a.id,
+                                                    AssignmentStudent.student_id == student_id))
+    if link is None:
+        raise HTTPException(404, "Student is not assigned to this assignment")
     d = db.scalar(select(Draft).where(Draft.assignment_id == a.id, Draft.student_id == student_id))
     s = db.scalar(select(Submission).where(Submission.assignment_id == a.id, Submission.student_id == student_id))
     fb = db.scalars(select(FeedbackItem).where(FeedbackItem.assignment_id == a.id,
@@ -449,7 +454,8 @@ def student_work(assignment_id: int, student_id: int, user: User = Depends(requi
                 "id": s.id, "content": s.content, "submitted_at": iso(s.submitted_at), "grade": s.grade,
                 "comments": s.comments, "released": s.released} if s else None,
             "feedback": [feedback_out(f, research=True) for f in fb],
-            "versions": [version_out(v) for v in versions]}
+            "versions": [version_out(v) for v in versions],
+            "revisions": revision_history(versions, s)}
 
 
 class GradeIn(BaseModel):

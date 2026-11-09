@@ -366,3 +366,34 @@ h3.h { font-size: 16px; font-weight: 600; margin: 20px 0 4px; }
   .grid2 { grid-template-columns: 1fr; }
   .set-label { width: 150px; }
 }
+/* Instructor review: roster, chronological revisions, and document markup. */
+.review-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 24px; flex-wrap: wrap; }
+.review-toolbar .field { min-width: 240px; }
+.review-toolbar p { margin-top: 4px; }
+.review-list-tools { margin: 16px 0; }
+.review-table-wrap { overflow-x: auto; }
+.review-pagination { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 16px 0; }
+.review-back { display: inline-block; color: var(--muted); margin-bottom: 16px; font-size: 13px; }
+.review-meta { margin: 12px 0 24px; }
+.review-workspace { display: grid; grid-template-columns: 228px minmax(0, 1fr); gap: 28px; align-items: start; }
+.revision-sidebar { border-right: 1px solid #e7e5e2; padding-right: 20px; }
+.revision-heading { display: flex; flex-direction: column; gap: 5px; margin-bottom: 16px; }
+.revision-item { display: flex; flex-direction: column; gap: 7px; width: 100%; text-align: left; font: inherit; cursor: pointer; border: 1px solid transparent; border-radius: 8px; padding: 13px 12px; background: transparent; margin-bottom: 6px; }
+.revision-item:hover { background: #f5f5f2; }
+.revision-item.active { background: #edf5f0; border-color: #bad5c4; box-shadow: inset 3px 0 #28774c; }
+.revision-item:focus-visible { outline: 2px solid #28774c; outline-offset: 2px; }
+.revision-main { min-width: 0; }
+.revision-document { border: 1px solid #e3e5e1; border-radius: 12px; background: white; overflow: hidden; box-shadow: 0 4px 20px #00000004; }
+.revision-document-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 20px 26px; border-bottom: 1px solid #eeefec; flex-wrap: wrap; }
+.revision-document h2, .review-grade h2 { margin: 0 0 5px; font-size: 16px; }
+.revision-legend { display: flex; gap: 20px; padding: 14px 28px 0; }
+.revision-writing { padding: 28px 36px 40px; min-height: 360px; white-space: pre-wrap; overflow-wrap: anywhere; font-family: Georgia, serif; font-size: 17px; line-height: 1.95; color: #303832; }
+.revision-writing del, .revision-legend del { color: #a32232; background: #fde8e9; text-decoration: line-through; text-decoration-thickness: 1.5px; }
+.revision-writing ins, .revision-legend ins { color: #146333; background: #e2f4e6; text-decoration: underline; text-decoration-color: #459963; text-underline-offset: 3px; }
+.revision-document-footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; border-top: 1px solid #eeefec; padding: 12px 20px; }
+.review-grade { margin-top: 24px; border: 1px solid #e3e5e1; border-radius: 12px; padding: 24px; }
+@media (max-width: 800px) {
+  .review-workspace { grid-template-columns: 1fr; }
+  .revision-sidebar { border-right: 0; border-bottom: 1px solid #e7e5e2; padding-right: 0; }
+  .revision-writing { padding: 22px; }
+}

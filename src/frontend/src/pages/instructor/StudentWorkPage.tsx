@@ -1,138 +1,127 @@
-import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+﻿import { useEffect, useState } from "react";
+import { Link, useParams } from "react-router-dom";
 import { api } from "../../api";
 import { fmtDate, wordCount } from "../../config";
-import type { Assignment, Feedback, UserRef } from "../../types";
-import { Callout, Loading, PageHeader, Prop, Props, Tag, Topbar, useLoad, useToast, Views } from "../../ui";
+import type { Assignment, UserRef } from "../../types";
+import { Loading, PageHeader, Tag, Topbar, useLoad, useToast } from "../../ui";
 import { useInstructor } from "./InstructorLayout";
 
+interface Revision {
+  id: number; created_at: string; content: string; words: number; is_submission: boolean;
+  changes: { kind: "equal" | "delete" | "insert"; text: string }[];
+}
 interface Work {
-  student: UserRef;
-  draft: string;
+  student: UserRef; draft: string; revisions: Revision[];
   submission: { id: number; content: string; submitted_at: string; grade: string | null; comments: string; released: boolean } | null;
-  feedback: Feedback[];
-  versions: { id: number; kind: string; created_at: string; words: number; preview: string }[];
 }
 
-/** I8: a student's work on an assignment, their feedback history, and grading. */
 export default function StudentWorkPage() {
   const { aid, sid } = useParams();
+  return <ReviewPage key={`${aid}/${sid}`} aid={aid!} sid={sid!} />;
+}
+
+function ReviewPage({ aid, sid }: { aid: string; sid: string }) {
   const toast = useToast();
   const { toggleSidebar } = useInstructor();
   const a = useLoad(() => api.get<Assignment>(`/api/instructor/assignments/${aid}`), [aid]);
   const w = useLoad(() => api.get<Work>(`/api/instructor/assignments/${aid}/students/${sid}/work`), [aid, sid]);
-  const [tab, setTab] = useState("work");
+  const [selected, setSelected] = useState<number | null>(null);
+  const [page, setPage] = useState(0);
+  const [showChanges, setShowChanges] = useState(true);
   const [grade, setGrade] = useState({ grade: "", comments: "" });
+  const [saving, setSaving] = useState(false);
   useEffect(() => {
     if (w.data?.submission) setGrade({ grade: w.data.submission.grade ?? "", comments: w.data.submission.comments });
   }, [w.data]);
 
-  if (!w.data || !a.data) return <><Topbar onToggleSidebar={toggleSidebar} crumbs={[{ label: "…" }]} /><Loading error={w.error ?? a.error} /></>;
-  const { student, submission, feedback } = w.data;
-  const text = submission?.content ?? w.data.draft;
-
+  if (!w.data || !a.data) return <><Topbar onToggleSidebar={toggleSidebar} crumbs={[{ label: "Review" }]} /><Loading error={w.error ?? a.error} /></>;
+  const { student, submission, revisions } = w.data;
+  const index = Math.max(0, revisions.findIndex(v => v.id === selected));
+  const revision = revisions[index];
+  const pages = Math.max(1, Math.ceil(revisions.length / 8));
+  const text = revision?.content ?? submission?.content ?? w.data.draft;
+  const reviewUrl = `/i/courses/${a.data.course_id}/review?assignment=${aid}`;
+  const choose = (i: number) => { setSelected(revisions[i].id); setPage(Math.floor(i / 8)); };
   const saveGrade = async (release: boolean) => {
+    if (!submission || saving) return;
+    setSaving(true);
     try {
-      await api.post(`/api/instructor/submissions/${submission!.id}/grade`, grade);
-      if (release) await api.post(`/api/instructor/assignments/${aid}/release`, { submission_ids: [submission!.id] });
-      toast(release ? "Grade saved and released" : "Grade saved (hidden until released)");
+      await api.post(`/api/instructor/submissions/${submission.id}/grade`, grade);
+      if (release) await api.post(`/api/instructor/assignments/${aid}/release`, { submission_ids: [submission.id] });
+      toast(release ? "Overall grade saved and released" : submission.released ? "Released grade updated" : "Overall grade saved (not released)");
       w.reload();
-    } catch (e) {
-      toast((e as Error).message, true);
-    }
+    } catch (e) { toast((e as Error).message, true); }
+    finally { setSaving(false); }
   };
 
-  return (
-    <>
-      <Topbar
-        onToggleSidebar={toggleSidebar}
-        crumbs={[
-          { label: a.data.title, icon: "📝", to: `/i/assignments/${aid}` },
-          { label: student.display_name, icon: "🧑‍🎓" },
-        ]}
-      />
-      <div className="content">
-        <div className="page wide">
-          <PageHeader icon="🧑‍🎓" title={student.display_name} />
-          <Props>
-            <Prop icon="🆔" label="MacID">{student.username} <span className="faint mono">{student.pseudonym}</span></Prop>
-            <Prop icon="◉" label="Status">
-              {submission ? <Tag dot color={submission.released ? "green" : "blue"}>{submission.released ? "Graded · released" : "Submitted"}</Tag> : <Tag dot color="yellow">In progress</Tag>}
-              {submission && <span className="faint">{fmtDate(submission.submitted_at, true)}</span>}
-            </Prop>
-            <Prop icon="#" label="Length">{wordCount(text)} words · {w.data.versions.length} versions · {feedback.length} feedback</Prop>
-          </Props>
-          <Views
-            tabs={[
-              { key: "work", label: submission ? "Submission" : "Current draft", icon: "📄" },
-              { key: "feedback", label: "Feedback history", icon: "💬", count: feedback.length },
-              { key: "versions", label: "Versions", icon: "🕘", count: w.data.versions.length },
-            ]}
-            active={tab} onChange={setTab}
-          />
-          {tab === "work" && (
-            <div className="grid2" style={{ gridTemplateColumns: "1.6fr 1fr", alignItems: "start" }}>
-              <div className="prewrap" style={{ fontFamily: "var(--serif)", fontSize: 16, lineHeight: 1.7 }}>
-                {text || <span className="faint">Nothing written yet.</span>}
-              </div>
-              <div className="fb-card" style={{ position: "sticky", top: 8 }}>
-                <h3 className="h" style={{ marginTop: 0 }}>🎓 Grade</h3>
-                {!submission ? <div className="faint">Grading opens after the student submits.</div> : (
-                  <>
-                    <div className="field"><label>Grade</label><input className="input" value={grade.grade} placeholder="e.g. 85 or A-" onChange={(e) => setGrade({ ...grade, grade: e.target.value })} /></div>
-                    <div className="field"><label>Comments</label><textarea className="textarea" rows={6} value={grade.comments} onChange={(e) => setGrade({ ...grade, comments: e.target.value })} /></div>
-                    <div className="row"><span className="spacer" />
-                      <button className="btn outline" disabled={!grade.grade} onClick={() => saveGrade(false)}>Save</button>
-                      <button className="btn primary" disabled={!grade.grade} onClick={() => saveGrade(true)}>Save & release</button>
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-          )}
-          {tab === "feedback" && (
-            <>
-              {feedback.length === 0 && <div className="empty">No feedback requested yet.</div>}
-              {feedback.map((f) => (
-                <div key={f.id} className="fb-card">
-                  <div className="row wrap small" style={{ marginBottom: 6, gap: 4 }}>
-                    <Tag color={f.venue === "realtime" ? "orange" : "blue"}>{f.venue === "realtime" ? `⚡ real-time · ${f.trigger}` : "💬 on-demand"}</Tag>
-                    <Tag color="gray">{f.source}</Tag>
-                    {f.style && <Tag color="purple">style: {f.style}</Tag>}
-                    <Tag color="gray">{f.presentation}</Tag>
-                    <Tag color={f.guardrail_status === "approved" ? "green" : "yellow"}>guardrail: {f.guardrail_status}</Tag>
-                    {f.student_helpful !== null && <Tag color={f.student_helpful ? "green" : "red"}>student: {f.student_helpful ? "👍" : "👎"}</Tag>}
-                    {f.instructor_rating && <Tag color="blue">instructor: {f.instructor_rating}/5</Tag>}
-                    {f.dismissed && <Tag color="gray">dismissed</Tag>}
-                    <span className="spacer" /><span className="faint">{fmtDate(f.created_at, true)} · {f.model_version} · {f.prompt_template}</span>
-                  </div>
-                  <b>{f.content.summary}</b>
-                  {f.content.items.map((x, i) => (
-                    <div key={i} style={{ marginTop: 4 }}><Tag color="purple">{x.rubric_area}</Tag> {x.comment} <span className="muted">{x.suggestion}</span></div>
-                  ))}
-                </div>
-              ))}
-            </>
-          )}
-          {tab === "versions" && (
-            <>
-              <Callout icon="🕘">Snapshots around feedback rounds and paste events, so revisions can be compared (S5, B9).</Callout>
-              <table className="table">
-                <tbody>
-                  {w.data.versions.map((v) => (
-                    <tr key={v.id}>
-                      <td style={{ whiteSpace: "nowrap" }}>{fmtDate(v.created_at, true)}</td>
-                      <td><Tag color={v.kind.startsWith("paste") ? "orange" : v.kind === "feedback_request" ? "blue" : "gray"}>{v.kind.replace("_", " ")}</Tag></td>
-                      <td>{v.words}w</td>
-                      <td className="muted small">{v.preview}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </>
-          )}
-        </div>
+  return <>
+    <Topbar onToggleSidebar={toggleSidebar} crumbs={[
+      { label: "Review", to: reviewUrl }, { label: a.data.title, to: `/i/assignments/${aid}` }, { label: student.display_name },
+    ]} />
+    <div className="content"><div className="page wide">
+      <Link className="review-back" to={reviewUrl}>← All students</Link>
+      <PageHeader icon="✎" title={student.display_name} />
+      <div className="row wrap review-meta">
+        <span className="muted">{a.data.title} · {student.username}</span>
+        <Tag color={submission ? "green" : "yellow"}>{submission ? "Submitted" : "In progress"}</Tag>
+        <span className="spacer" /><span className="muted small">{revisions.length} saved revisions</span>
       </div>
-    </>
-  );
+      <div className="review-workspace">
+        <aside className="revision-sidebar" aria-label="Revision history">
+          <div className="revision-heading"><strong>Revision list</strong><span className="faint small">Oldest to newest</span></div>
+          {!revisions.length && <p className="muted">No saved revisions yet.</p>}
+          {revisions.slice(page * 8, page * 8 + 8).map((v, i) => {
+            const n = page * 8 + i;
+            return <button key={v.id} className={`revision-item ${n === index ? "active" : ""}`} aria-current={n === index ? "step" : undefined} onClick={() => choose(n)}>
+              <span className="row"><strong>Revision {n + 1}</strong>{v.is_submission && <Tag color="green">Final</Tag>}</span>
+              <span className="small muted">{fmtDate(v.created_at, true)}</span>
+              <span className="small faint">{v.words} words{n === 0 ? " · First saved draft" : ""}</span>
+            </button>;
+          })}
+          <div className="review-pagination">
+            <button className="btn" aria-label="Previous revision page" disabled={page === 0} onClick={() => choose((page - 1) * 8)}>←</button>
+            <span className="small muted">{page + 1} / {pages}</span>
+            <button className="btn" aria-label="Next revision page" disabled={page + 1 >= pages} onClick={() => choose((page + 1) * 8)}>→</button>
+          </div>
+        </aside>
+        <section className="revision-main" aria-label="Student writing">
+          <div className="revision-document">
+            <div className="revision-document-toolbar">
+              <div><h2>{revision ? `Revision ${index + 1}` : "Current draft"}</h2>
+                <span className="muted small">{index === 0 ? "First saved draft" : `Compared with revision ${index}`} · {wordCount(text)} words</span>
+              </div>
+              <label className="row small"><input type="checkbox" checked={showChanges} onChange={e => setShowChanges(e.target.checked)} />Show changes</label>
+            </div>
+            {showChanges && index > 0 && <div className="revision-legend small"><span><del>Removed text</del></span><span><ins>Added text</ins></span></div>}
+            <article className="revision-writing" aria-label={`Revision ${index + 1} content`}>
+              {showChanges && revision && index > 0
+                ? revision.changes.map((change, i) => change.kind === "delete" ? <del key={i}>{change.text}</del> : change.kind === "insert" ? <ins key={i}>{change.text}</ins> : <span key={i}>{change.text}</span>)
+                : text || <span className="faint">No text in this revision.</span>}
+            </article>
+            <div className="revision-document-footer">
+              <button className="btn" disabled={!revision || index === 0} onClick={() => choose(index - 1)}>← Earlier</button>
+              <span className="small muted">{revision?.is_submission ? "Final submitted version" : "Saved draft"}</span>
+              <button className="btn" disabled={!revision || index + 1 >= revisions.length} onClick={() => choose(index + 1)}>Later →</button>
+            </div>
+          </div>
+          <section className="review-grade" aria-label="Overall assignment grade">
+            <div className="row wrap"><h2>Overall assignment grade</h2><span className="spacer" />
+              {submission?.grade && <Tag color={submission.released ? "green" : "gray"}>{submission.released ? "Released" : "Not released"}</Tag>}
+            </div>
+            <p className="muted small">One grade for the final submission, across all revisions.</p>
+            {!submission ? <p className="muted">Grading opens after the student submits.</p> : <>
+              <div className="row wrap small" style={{ marginBottom: 16 }}><span className="muted">Submitted {fmtDate(submission.submitted_at, true)}</span>
+                <button className="btn" onClick={() => choose(revisions.length - 1)}>View final submission</button></div>
+              <div className="field"><label htmlFor="overall-grade">Grade</label><input id="overall-grade" className="input" maxLength={32} value={grade.grade} placeholder="e.g. 85 or A-" onChange={e => setGrade({ ...grade, grade: e.target.value })} /></div>
+              <div className="field"><label htmlFor="overall-comments">Overall comments</label><textarea id="overall-comments" className="textarea" rows={4} value={grade.comments} placeholder="Feedback on the assignment as a whole…" onChange={e => setGrade({ ...grade, comments: e.target.value })} /></div>
+              <div className="row wrap"><span className="spacer" />
+                <button className="btn outline" disabled={!grade.grade.trim() || saving} onClick={() => saveGrade(false)}>{saving ? "Saving…" : "Save grade"}</button>
+                {!submission.released && <button className="btn primary" disabled={!grade.grade.trim() || saving} onClick={() => saveGrade(true)}>Save & release</button>}
+              </div>
+            </>}
+          </section>
+        </section>
+      </div>
+    </div></div>
+  </>;
 }

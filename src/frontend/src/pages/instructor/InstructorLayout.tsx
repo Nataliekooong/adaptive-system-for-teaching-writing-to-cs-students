@@ -19,7 +19,7 @@ export const COURSE_TABS = [
   { key: "assignments", label: "Assignments", icon: "📝" },
   { key: "experiments", label: "A/B experiments", icon: "🧪" },
   { key: "modules", label: "Course modules", icon: "🧩" },
-  { key: "review", label: "Review queue", icon: "⭐" },
+  { key: "review", label: "Review", icon: "⭐" },
   { key: "students", label: "Students", icon: "👥" },
   { key: "library", label: "Feedback library", icon: "📚" },
   { key: "research", label: "Research data", icon: "📊" },

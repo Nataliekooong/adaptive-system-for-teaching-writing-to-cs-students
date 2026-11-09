@@ -43,6 +43,60 @@ def course_and_assignment(c, inst):
     return course, a
 
 
+def test_review_history_without_ai_and_overall_grade(client):
+    inst, stu = login(client, "drlee"), login(client, "priya")
+    _, a = course_and_assignment(client, inst)
+    base = f"/api/student/assignments/{a['id']}"
+    first = "Our system is slow.\n\nWe use caching."
+    second = "Our system is fast.\n\nWe use reliable caching."
+    for content, kind in [(first, "autosave"), (first, "manual"), (second, "autosave"),
+                          (first, "manual"), (second, "manual")]:
+        assert client.put(f"{base}/draft", headers=stu, json={"content": content, "kind": kind}).status_code == 200
+    roster = client.get(f"/api/instructor/assignments/{a['id']}/submissions", headers=inst).json()
+    assert len(roster) == 6  # Includes students who have never written anything.
+    row = next(r for r in roster if r["student"]["username"] == "priya")
+    sid = row["student"]["id"]
+    assert row["status"] == "in progress" and row["submission_id"] is None
+    work_url = f"/api/instructor/assignments/{a['id']}/students/{sid}/work"
+    work = client.get(work_url, headers=inst).json()
+    assert work["feedback"] == []
+    assert [r["content"] for r in work["revisions"]] == [first, second, first, second]
+    changes = work["revisions"][1]["changes"]
+    assert "".join(c["text"] for c in changes if c["kind"] != "insert") == first
+    assert "".join(c["text"] for c in changes if c["kind"] != "delete") == second
+    assert any(c["kind"] == "delete" and "slow" in c["text"] for c in changes)
+    assert any(c["kind"] == "insert" and "fast" in c["text"] for c in changes)
+    client.patch(f"/api/instructor/assignments/{a['id']}", headers=inst,
+                 json={"config": {"submission_rules": {"enabled": False}}})
+    submitted = client.post(f"{base}/submit", headers=stu, json={"content": second})
+    assert submitted.status_code == 200, submitted.text
+    work = client.get(work_url, headers=inst).json()
+    assert len(work["revisions"]) == 4  # Submit does not create a duplicate revision.
+    assert work["revisions"][-1]["is_submission"]
+    sub_id = work["submission"]["id"]
+    assert client.post(f"/api/instructor/submissions/{sub_id}/grade", headers=inst,
+                       json={"grade": "85", "comments": "Clear improvement."}).status_code == 200
+    assert client.post(f"/api/instructor/assignments/{a['id']}/release", headers=inst,
+                       json={"submission_ids": [sub_id]}).status_code == 200
+    student_work = client.get(base, headers=stu).json()
+    assert student_work["submission"]["grade"] == "85"
+    assert client.get(work_url, headers=stu).status_code == 403
+    assert client.get(f"/api/instructor/assignments/{a['id']}/students/999999/work", headers=inst).status_code == 404
+    other = next(r for r in roster if r["student"]["username"] == "marcus")
+    other_work = client.get(f"/api/instructor/assignments/{a['id']}/students/{other['student']['id']}/work", headers=inst).json()
+    assert other_work["revisions"] == []
+
+
+@pytest.mark.parametrize("before,after", [("", "Hello"), ("All gone", ""),
+    ("a a a", "a b a"), ("你好，世界。", "你好，新世界！"), ("a\n\nb", "a\n b"),
+    ("word " * 300 + "old", "word " * 300 + "new")])
+def test_revision_diff_preserves_documents(before, after):
+    from app.services.revisions import text_changes
+    changes = text_changes(before, after)
+    assert "".join(c["text"] for c in changes if c["kind"] != "insert") == before
+    assert "".join(c["text"] for c in changes if c["kind"] != "delete") == after
+
+
 # ---------------------------------------------------------------- module registry
 
 def test_resolve_layers_and_dependencies():
