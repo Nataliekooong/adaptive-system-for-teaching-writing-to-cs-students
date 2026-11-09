@@ -60,18 +60,13 @@ def test_review_history_without_ai_and_overall_grade(client):
     work_url = f"/api/instructor/assignments/{a['id']}/students/{sid}/work"
     work = client.get(work_url, headers=inst).json()
     assert work["feedback"] == []
-    assert [r["content"] for r in work["revisions"]] == [first, second, first, second]
-    changes = work["revisions"][1]["changes"]
-    assert "".join(c["text"] for c in changes if c["kind"] != "insert") == first
-    assert "".join(c["text"] for c in changes if c["kind"] != "delete") == second
-    assert any(c["kind"] == "delete" and "slow" in c["text"] for c in changes)
-    assert any(c["kind"] == "insert" and "fast" in c["text"] for c in changes)
+    assert work["revisions"] == []  # Autosaves do not close feedback rounds.
     client.patch(f"/api/instructor/assignments/{a['id']}", headers=inst,
                  json={"config": {"submission_rules": {"enabled": False}}})
     submitted = client.post(f"{base}/submit", headers=stu, json={"content": second})
     assert submitted.status_code == 200, submitted.text
     work = client.get(work_url, headers=inst).json()
-    assert len(work["revisions"]) == 4  # Submit does not create a duplicate revision.
+    assert len(work["revisions"]) == 1  # No AI requests: only the final submission.
     assert work["revisions"][-1]["is_submission"]
     sub_id = work["submission"]["id"]
     assert client.post(f"/api/instructor/submissions/{sub_id}/grade", headers=inst,
@@ -95,6 +90,48 @@ def test_revision_diff_preserves_documents(before, after):
     changes = text_changes(before, after)
     assert "".join(c["text"] for c in changes if c["kind"] != "insert") == before
     assert "".join(c["text"] for c in changes if c["kind"] != "delete") == after
+
+
+def test_review_rounds_follow_feedback_requests(client, monkeypatch):
+    inst, stu = login(client, "drlee"), login(client, "priya")
+    _, a = course_and_assignment(client, inst)
+    base = f"/api/student/assignments/{a['id']}"
+    client.patch(f"/api/instructor/assignments/{a['id']}", headers=inst,
+                 json={"config": {"on_demand_feedback": {"cooldown_seconds": 0},
+                                  "submission_rules": {"enabled": False}}})
+    roster = client.get(f"/api/instructor/assignments/{a['id']}/submissions", headers=inst).json()
+    sid = next(r["student"]["id"] for r in roster if r["student"]["username"] == "priya")
+    work_url = f"/api/instructor/assignments/{a['id']}/students/{sid}/work"
+    first = client.post(f"{base}/feedback", headers=stu, json={"content": LONG_DRAFT})
+    assert first.status_code == 200
+    for content in [LONG_DRAFT + " First edit.", LONG_DRAFT + " Another sentence."]:
+        assert client.put(f"{base}/draft", headers=stu, json={"content": content, "kind": "autosave"}).status_code == 200
+    revised = LONG_DRAFT.replace("really slow", "fast and reliable")
+    second = client.post(f"{base}/feedback", headers=stu, json={"content": revised})
+    assert second.status_code == 200
+    rounds = client.get(work_url, headers=inst).json()["revisions"]
+    assert len(rounds) == 2
+    assert rounds[0]["content"] == LONG_DRAFT and rounds[0]["preceding_feedback"] is None
+    assert rounds[1]["content"] == revised
+    assert rounds[1]["preceding_feedback"]["id"] == first.json()["id"]
+    assert "".join(c["text"] for c in rounds[1]["changes"] if c["kind"] != "insert") == LONG_DRAFT
+    assert "".join(c["text"] for c in rounds[1]["changes"] if c["kind"] != "delete") == revised
+    # A repeated request still closes a round, even with unchanged writing.
+    third = client.post(f"{base}/feedback", headers=stu, json={"content": revised})
+    assert third.status_code == 200
+    rounds = client.get(work_url, headers=inst).json()["revisions"]
+    assert len(rounds) == 3 and rounds[2]["preceding_feedback"]["id"] == second.json()["id"]
+    # A failed request preserves its snapshot without borrowing a later response.
+    monkeypatch.setenv("MOCK_SLM_FAIL", "1")
+    assert client.post(f"{base}/feedback", headers=stu, json={"content": revised}).status_code == 503
+    monkeypatch.delenv("MOCK_SLM_FAIL")
+    final = revised + " Final edits without another feedback request."
+    assert client.post(f"{base}/submit", headers=stu, json={"content": final}).status_code == 200
+    rounds = client.get(work_url, headers=inst).json()["revisions"]
+    assert len(rounds) == 5
+    assert rounds[3]["preceding_feedback"]["id"] == third.json()["id"]
+    assert rounds[4]["is_submission"] and rounds[4]["content"] == final
+    assert rounds[4]["preceding_feedback"] is None
 
 
 # ---------------------------------------------------------------- module registry

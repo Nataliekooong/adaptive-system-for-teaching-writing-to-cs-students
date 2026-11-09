@@ -1,12 +1,13 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { api } from "../../api";
 import { fmtDate, wordCount } from "../../config";
-import type { Assignment, UserRef } from "../../types";
+import type { Assignment, Feedback, UserRef } from "../../types";
 import { Loading, PageHeader, Tag, Topbar, useLoad, useToast } from "../../ui";
 import { useInstructor } from "./InstructorLayout";
 
 interface Revision {
+  preceding_feedback: Feedback | null;
   id: number; created_at: string; content: string; words: number; is_submission: boolean;
   changes: { kind: "equal" | "delete" | "insert"; text: string }[];
 }
@@ -58,22 +59,22 @@ function ReviewPage({ aid, sid }: { aid: string; sid: string }) {
     <Topbar onToggleSidebar={toggleSidebar} crumbs={[
       { label: "Review", to: reviewUrl }, { label: a.data.title, to: `/i/assignments/${aid}` }, { label: student.display_name },
     ]} />
-    <div className="content"><div className="page wide">
+    <div className="content"><div className="page review-page">
       <Link className="review-back" to={reviewUrl}>← All students</Link>
       <PageHeader icon="✎" title={student.display_name} />
       <div className="row wrap review-meta">
         <span className="muted">{a.data.title} · {student.username}</span>
         <Tag color={submission ? "green" : "yellow"}>{submission ? "Submitted" : "In progress"}</Tag>
-        <span className="spacer" /><span className="muted small">{revisions.length} saved revisions</span>
+        <span className="spacer" /><span className="muted small">{revisions.filter(v => !v.is_submission).length} feedback rounds</span>
       </div>
       <div className="review-workspace">
         <aside className="revision-sidebar" aria-label="Revision history">
           <div className="revision-heading"><strong>Revision list</strong><span className="faint small">Oldest to newest</span></div>
-          {!revisions.length && <p className="muted">No saved revisions yet.</p>}
+          {!revisions.length && <p className="muted">No feedback requested yet.</p>}
           {revisions.slice(page * 8, page * 8 + 8).map((v, i) => {
             const n = page * 8 + i;
             return <button key={v.id} className={`revision-item ${n === index ? "active" : ""}`} aria-current={n === index ? "step" : undefined} onClick={() => choose(n)}>
-              <span className="row"><strong>Revision {n + 1}</strong>{v.is_submission && <Tag color="green">Final</Tag>}</span>
+              <span className="row"><strong>{v.is_submission ? "Final submission" : `Revision ${n + 1}`}</strong>{v.is_submission && <Tag color="green">Final</Tag>}</span>
               <span className="small muted">{fmtDate(v.created_at, true)}</span>
               <span className="small faint">{v.words} words{n === 0 ? " · First saved draft" : ""}</span>
             </button>;
@@ -85,10 +86,23 @@ function ReviewPage({ aid, sid }: { aid: string; sid: string }) {
           </div>
         </aside>
         <section className="revision-main" aria-label="Student writing">
+          {revision && <section className="revision-feedback" aria-label="Feedback preceding this revision">
+            <h2>{index === 0 ? "Initial writing" : `AI feedback from request ${index}`}</h2>
+            {index === 0 ? <p className="muted small">The student's writing before their first AI feedback request.</p>
+              : revision.preceding_feedback ? <>
+                <p>{revision.preceding_feedback.content.summary}</p>
+                {revision.preceding_feedback.content.items.map((item, i) => <div className="revision-feedback-item" key={i}>
+                  <Tag color="purple">{item.rubric_area}</Tag>
+                  {item.quote && <blockquote>{item.quote}</blockquote>}
+                  <p>{item.comment}</p><p className="muted">{item.suggestion}</p>
+                </div>)}
+                <p className="small muted">The writing below shows the changes after this feedback, up to {revision.is_submission ? "final submission" : "the next feedback request"}.</p>
+              </> : <p className="muted small">No feedback was returned for the preceding request. The saved writing is preserved below.</p>}
+          </section>}
           <div className="revision-document">
             <div className="revision-document-toolbar">
-              <div><h2>{revision ? `Revision ${index + 1}` : "Current draft"}</h2>
-                <span className="muted small">{index === 0 ? "First saved draft" : `Compared with revision ${index}`} · {wordCount(text)} words</span>
+              <div><h2>{revision ? revision.is_submission ? "Final submission" : `Revision ${index + 1}` : "Current draft"}</h2>
+                <span className="muted small">{index === 0 ? "Initial writing ? No prior AI feedback" : `Compared with revision ${index}`} · {wordCount(text)} words</span>
               </div>
               <label className="row small"><input type="checkbox" checked={showChanges} onChange={e => setShowChanges(e.target.checked)} />Show changes</label>
             </div>
@@ -100,7 +114,7 @@ function ReviewPage({ aid, sid }: { aid: string; sid: string }) {
             </article>
             <div className="revision-document-footer">
               <button className="btn" disabled={!revision || index === 0} onClick={() => choose(index - 1)}>← Earlier</button>
-              <span className="small muted">{revision?.is_submission ? "Final submitted version" : "Saved draft"}</span>
+              <span className="small muted">{revision?.is_submission ? "Final submitted version" : "Snapshot at feedback request"}</span>
               <button className="btn" disabled={!revision || index + 1 >= revisions.length} onClick={() => choose(index + 1)}>Later →</button>
             </div>
           </div>

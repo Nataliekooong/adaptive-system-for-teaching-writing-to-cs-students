@@ -455,7 +455,7 @@ def student_work(assignment_id: int, student_id: int, user: User = Depends(requi
                 "comments": s.comments, "released": s.released} if s else None,
             "feedback": [feedback_out(f, research=True) for f in fb],
             "versions": [version_out(v) for v in versions],
-            "revisions": revision_history(versions, s)}
+            "revisions": revision_history(versions, s, fb)}
 
 
 class GradeIn(BaseModel):

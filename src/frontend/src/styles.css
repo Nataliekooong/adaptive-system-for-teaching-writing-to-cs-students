@@ -375,7 +375,13 @@ h3.h { font-size: 16px; font-weight: 600; margin: 20px 0 4px; }
 .review-pagination { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 16px 0; }
 .review-back { display: inline-block; color: var(--muted); margin-bottom: 16px; font-size: 13px; }
 .review-meta { margin: 12px 0 24px; }
-.review-workspace { display: grid; grid-template-columns: 228px minmax(0, 1fr); gap: 28px; align-items: start; }
+.page.review-page { max-width: none; padding-left: 24px; padding-right: 32px; }
+.review-workspace { display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 20px; align-items: start; }
+.revision-feedback { border: 1px solid #e3e5e1; border-radius: 12px; padding: 20px 26px; margin-bottom: 18px; background: #f7faf8; }
+.revision-feedback h2 { font-size: 16px; margin: 0; }
+.revision-feedback-item { margin-top: 14px; }
+.revision-feedback-item p { margin: 6px 0; }
+.revision-feedback-item blockquote { border-left: 3px solid #bad5c4; padding-left: 12px; margin: 10px 0; white-space: pre-wrap; }
 .revision-sidebar { border-right: 1px solid #e7e5e2; padding-right: 20px; }
 .revision-heading { display: flex; flex-direction: column; gap: 5px; margin-bottom: 16px; }
 .revision-item { display: flex; flex-direction: column; gap: 7px; width: 100%; text-align: left; font: inherit; cursor: pointer; border: 1px solid transparent; border-radius: 8px; padding: 13px 12px; background: transparent; margin-bottom: 6px; }

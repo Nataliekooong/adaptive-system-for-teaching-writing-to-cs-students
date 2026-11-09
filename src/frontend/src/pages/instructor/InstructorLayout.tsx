@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Outlet, useLocation, useNavigate, useOutletContext } from "react-router-dom";
 import { api } from "../../api";
 import { useAuth } from "../../auth";
@@ -33,6 +33,10 @@ export default function InstructorLayout() {
   const [openCourse, setOpenCourse] = useState<Record<number, boolean>>({});
   const registry = useLoad(() => api.get<Registry>("/api/modules"), []);
   const courses = useLoad(() => api.get<Course[]>("/api/instructor/courses"), []);
+
+  useEffect(() => {
+    if (/^\/i\/assignments\/[^/]+\/students\/[^/]+$/.test(loc.pathname)) setCollapsed(true);
+  }, [loc.pathname]);
 
   if (!registry.data || !courses.data) return <Loading error={registry.error ?? courses.error} />;
 
