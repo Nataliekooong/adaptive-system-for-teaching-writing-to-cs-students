@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Outlet, useLocation, useNavigate, useOutletContext } from "react-router-dom";
 import { api } from "../../api";
 import { useAuth } from "../../auth";
@@ -19,7 +19,7 @@ export const COURSE_TABS = [
   { key: "assignments", label: "Assignments", icon: "📝" },
   { key: "experiments", label: "A/B experiments", icon: "🧪" },
   { key: "modules", label: "Course modules", icon: "🧩" },
-  { key: "review", label: "Review queue", icon: "⭐" },
+  { key: "review", label: "Review", icon: "⭐" },
   { key: "students", label: "Students", icon: "👥" },
   { key: "library", label: "Feedback library", icon: "📚" },
   { key: "research", label: "Research data", icon: "📊" },
@@ -33,6 +33,10 @@ export default function InstructorLayout() {
   const [openCourse, setOpenCourse] = useState<Record<number, boolean>>({});
   const registry = useLoad(() => api.get<Registry>("/api/modules"), []);
   const courses = useLoad(() => api.get<Course[]>("/api/instructor/courses"), []);
+
+  useEffect(() => {
+    if (/^\/i\/assignments\/[^/]+\/students\/[^/]+$/.test(loc.pathname)) setCollapsed(true);
+  }, [loc.pathname]);
 
   if (!registry.data || !courses.data) return <Loading error={registry.error ?? courses.error} />;
 

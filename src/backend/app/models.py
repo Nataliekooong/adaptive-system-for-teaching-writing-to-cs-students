@@ -259,6 +259,16 @@ class Submission(Base):
     released: Mapped[bool] = mapped_column(Boolean, default=False)
 
 
+class SubmissionBanditRating(Base):
+    """One assignment-level instructor signal, separate from the student's grade."""
+
+    __tablename__ = "submission_bandit_ratings"
+    submission_id: Mapped[int] = mapped_column(ForeignKey("submissions.id"), primary_key=True)
+    rating: Mapped[int] = mapped_column(Integer)
+    decision_ids: Mapped[list] = mapped_column(JSON, default=list)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=now)
+
+
 class EventLog(Base):
     """Append-only research log. Linked to pseudonym, assignment and study condition."""
 

@@ -43,6 +43,163 @@ def course_and_assignment(c, inst):
     return course, a
 
 
+def test_review_history_without_ai_and_overall_grade(client):
+    inst, stu = login(client, "drlee"), login(client, "priya")
+    _, a = course_and_assignment(client, inst)
+    base = f"/api/student/assignments/{a['id']}"
+    first = "Our system is slow.\n\nWe use caching."
+    second = "Our system is fast.\n\nWe use reliable caching."
+    for content, kind in [(first, "autosave"), (first, "manual"), (second, "autosave"),
+                          (first, "manual"), (second, "manual")]:
+        assert client.put(f"{base}/draft", headers=stu, json={"content": content, "kind": kind}).status_code == 200
+    roster = client.get(f"/api/instructor/assignments/{a['id']}/submissions", headers=inst).json()
+    assert len(roster) == 6  # Includes students who have never written anything.
+    row = next(r for r in roster if r["student"]["username"] == "priya")
+    sid = row["student"]["id"]
+    assert row["status"] == "in progress" and row["submission_id"] is None
+    work_url = f"/api/instructor/assignments/{a['id']}/students/{sid}/work"
+    work = client.get(work_url, headers=inst).json()
+    assert work["feedback"] == []
+    assert work["revisions"] == []  # Autosaves do not close feedback rounds.
+    client.patch(f"/api/instructor/assignments/{a['id']}", headers=inst,
+                 json={"config": {"submission_rules": {"enabled": False}}})
+    submitted = client.post(f"{base}/submit", headers=stu, json={"content": second})
+    assert submitted.status_code == 200, submitted.text
+    work = client.get(work_url, headers=inst).json()
+    assert len(work["revisions"]) == 1  # No AI requests: only the final submission.
+    assert work["revisions"][-1]["is_submission"]
+    sub_id = work["submission"]["id"]
+    assert client.post(f"/api/instructor/submissions/{sub_id}/grade", headers=inst,
+                       json={"grade": "85", "comments": "Clear improvement."}).status_code == 200
+    assert client.post(f"/api/instructor/assignments/{a['id']}/release", headers=inst,
+                       json={"submission_ids": [sub_id]}).status_code == 200
+    student_work = client.get(base, headers=stu).json()
+    assert student_work["submission"]["grade"] == "85"
+    assert client.get(work_url, headers=stu).status_code == 403
+    assert client.get(f"/api/instructor/assignments/{a['id']}/students/999999/work", headers=inst).status_code == 404
+    other = next(r for r in roster if r["student"]["username"] == "marcus")
+    other_work = client.get(f"/api/instructor/assignments/{a['id']}/students/{other['student']['id']}/work", headers=inst).json()
+    assert other_work["revisions"] == []
+
+
+@pytest.mark.parametrize("before,after", [("", "Hello"), ("All gone", ""),
+    ("a a a", "a b a"), ("你好，世界。", "你好，新世界！"), ("a\n\nb", "a\n b"),
+    ("word " * 300 + "old", "word " * 300 + "new")])
+def test_revision_diff_preserves_documents(before, after):
+    from app.services.revisions import text_changes
+    changes = text_changes(before, after)
+    assert "".join(c["text"] for c in changes if c["kind"] != "insert") == before
+    assert "".join(c["text"] for c in changes if c["kind"] != "delete") == after
+
+
+def test_review_rounds_follow_feedback_requests(client, monkeypatch):
+    inst, stu = login(client, "drlee"), login(client, "priya")
+    _, a = course_and_assignment(client, inst)
+    base = f"/api/student/assignments/{a['id']}"
+    client.patch(f"/api/instructor/assignments/{a['id']}", headers=inst,
+                 json={"config": {"on_demand_feedback": {"cooldown_seconds": 0},
+                                  "submission_rules": {"enabled": False}}})
+    roster = client.get(f"/api/instructor/assignments/{a['id']}/submissions", headers=inst).json()
+    sid = next(r["student"]["id"] for r in roster if r["student"]["username"] == "priya")
+    work_url = f"/api/instructor/assignments/{a['id']}/students/{sid}/work"
+    first = client.post(f"{base}/feedback", headers=stu, json={"content": LONG_DRAFT})
+    assert first.status_code == 200
+    for content in [LONG_DRAFT + " First edit.", LONG_DRAFT + " Another sentence."]:
+        assert client.put(f"{base}/draft", headers=stu, json={"content": content, "kind": "autosave"}).status_code == 200
+    revised = LONG_DRAFT.replace("really slow", "fast and reliable")
+    second = client.post(f"{base}/feedback", headers=stu, json={"content": revised})
+    assert second.status_code == 200
+    rounds = client.get(work_url, headers=inst).json()["revisions"]
+    assert len(rounds) == 2
+    assert rounds[0]["content"] == LONG_DRAFT and rounds[0]["preceding_feedback"] is None
+    assert rounds[1]["content"] == revised
+    assert rounds[1]["preceding_feedback"]["id"] == first.json()["id"]
+    assert "".join(c["text"] for c in rounds[1]["changes"] if c["kind"] != "insert") == LONG_DRAFT
+    assert "".join(c["text"] for c in rounds[1]["changes"] if c["kind"] != "delete") == revised
+    # A repeated request still closes a round, even with unchanged writing.
+    third = client.post(f"{base}/feedback", headers=stu, json={"content": revised})
+    assert third.status_code == 200
+    rounds = client.get(work_url, headers=inst).json()["revisions"]
+    assert len(rounds) == 3 and rounds[2]["preceding_feedback"]["id"] == second.json()["id"]
+    # A failed request preserves its snapshot without borrowing a later response.
+    monkeypatch.setenv("MOCK_SLM_FAIL", "1")
+    assert client.post(f"{base}/feedback", headers=stu, json={"content": revised}).status_code == 503
+    monkeypatch.delenv("MOCK_SLM_FAIL")
+    final = revised + " Final edits without another feedback request."
+    assert client.post(f"{base}/submit", headers=stu, json={"content": final}).status_code == 200
+    rounds = client.get(work_url, headers=inst).json()["revisions"]
+    assert len(rounds) == 5
+    assert rounds[3]["preceding_feedback"]["id"] == third.json()["id"]
+    assert rounds[4]["is_submission"] and rounds[4]["content"] == final
+    assert rounds[4]["preceding_feedback"] is None
+
+
+def test_assignment_bandit_rating_is_separate_and_applied_once(client):
+    inst, stu, other = login(client, "drlee"), login(client, "priya"), login(client, "marcus")
+    course, a = course_and_assignment(client, inst)
+    base = f"/api/student/assignments/{a['id']}"
+    client.patch(f"/api/instructor/assignments/{a['id']}", headers=inst, json={"config": {
+        "on_demand_feedback": {"cooldown_seconds": 0}, "submission_rules": {"enabled": False},
+        "reward": {"mode": "instructor_only"}}})
+    feedback = [client.post(f"{base}/feedback", headers=stu, json={"content": LONG_DRAFT}).json() for _ in range(3)]
+    other_feedback = client.post(f"{base}/feedback", headers=other, json={"content": LONG_DRAFT}).json()
+    # One already finalized decision must not be overwritten by the overall rating.
+    client.post(f"/api/instructor/feedback/{feedback[0]['id']}/rating", headers=inst, json={"rating": 1})
+    sub = client.post(f"{base}/submit", headers=stu, json={"content": LONG_DRAFT}).json()
+    grade_url = f"/api/instructor/submissions/{sub['id']}/grade"
+    rating_url = f"/api/instructor/submissions/{sub['id']}/bandit-rating"
+    assert client.post(grade_url, headers=inst, json={"grade": "85", "comments": "Good work"}).status_code == 200
+    assert _decision_for(feedback[1]["id"]).instructor_score is None
+    assert client.post(rating_url, headers=stu, json={"rating": 5}).status_code == 403
+    for value in [0, 6, 2.5, True]:
+        assert client.post(rating_url, headers=inst, json={"rating": value}).status_code == 422
+    result = client.post(rating_url, headers=inst, json={"rating": 4})
+    assert result.status_code == 200, result.text
+    assert result.json()["rating"] == 4 and result.json()["rated_decisions"] == 2
+    for fb in feedback[1:]:
+        decision = _decision_for(fb["id"])
+        assert decision.instructor_score == 0.75 and decision.reward == 0.75
+        assert decision.reward_status == "final"
+    assert _decision_for(feedback[0]["id"]).reward == 0
+    assert _decision_for(other_feedback["id"]).instructor_score is None
+    assert client.post(rating_url, headers=inst, json={"rating": 4}).status_code == 200
+    assert client.post(rating_url, headers=inst, json={"rating": 5}).status_code == 409
+    with SessionLocal() as db:
+        from app.models import Submission, SubmissionBanditRating
+        from app.services.bandit import apply_finalized
+        saved = db.get(Submission, sub["id"])
+        assert saved.grade == "85" and saved.comments == "Good work" and not saved.released
+        assert db.get(SubmissionBanditRating, sub["id"]).rating == 4
+        updates = apply_finalized(db, course["id"])
+        assert sum(x["n"] for x in updates) == 3
+        assert sum(x["d_alpha"] for x in updates) == 1.5
+        assert apply_finalized(db, course["id"]) == []
+    assert client.post(grade_url, headers=inst, json={"grade": "A-"}).status_code == 200
+    assert _decision_for(feedback[1]["id"]).reward == 0.75
+    # Assignment deletion also removes the associated rating record.
+    assert client.delete(f"/api/instructor/assignments/{a['id']}", headers=inst).status_code == 200
+
+
+@pytest.mark.parametrize("config", [
+    {"reward": {"mode": "student_only"}},
+    {"reward": {"enabled": False}},
+    {"instructor_review": {"enabled": False}},
+    {"on_demand_feedback": {"style_policy": "fixed"}},
+])
+def test_assignment_bandit_rating_respects_reward_configuration(client, config):
+    inst, stu = login(client, "drlee"), login(client, "priya")
+    _, a = course_and_assignment(client, inst)
+    base = f"/api/student/assignments/{a['id']}"
+    client.patch(f"/api/instructor/assignments/{a['id']}", headers=inst,
+                 json={"config": {**config, "submission_rules": {"enabled": False}}})
+    fb = client.post(f"{base}/feedback", headers=stu, json={"content": LONG_DRAFT})
+    assert fb.status_code == 200, fb.text
+    sub = client.post(f"{base}/submit", headers=stu, json={"content": LONG_DRAFT}).json()
+    result = client.post(f"/api/instructor/submissions/{sub['id']}/bandit-rating", headers=inst, json={"rating": 5})
+    assert result.status_code == 409
+    assert _decision_for(fb.json()["id"]).instructor_score is None
+
+
 # ---------------------------------------------------------------- module registry
 
 def test_resolve_layers_and_dependencies():
