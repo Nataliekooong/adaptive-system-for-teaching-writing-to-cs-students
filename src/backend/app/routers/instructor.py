@@ -9,6 +9,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 
 from .. import modules
 from ..auth import require_instructor
@@ -31,6 +32,7 @@ from ..models import (
     FixedPrompt,
     LearnerProfile,
     Submission,
+    SubmissionBanditRating,
     User,
     now,
 )
@@ -101,6 +103,8 @@ def _purge_assignment(db: Session, a: Assignment) -> None:
     """Remove an assignment and its operational rows. Event logs stay (append-only, §8.2)."""
     draft_ids = list(db.scalars(select(Draft.id).where(Draft.assignment_id == a.id)))
     db.execute(delete(FeedbackItem).where(FeedbackItem.assignment_id == a.id))
+    db.execute(delete(SubmissionBanditRating).where(SubmissionBanditRating.submission_id.in_(
+        select(Submission.id).where(Submission.assignment_id == a.id))))
     db.execute(delete(Submission).where(Submission.assignment_id == a.id))
     if draft_ids:
         db.execute(delete(DraftVersion).where(DraftVersion.draft_id.in_(draft_ids)))
@@ -455,7 +459,66 @@ def student_work(assignment_id: int, student_id: int, user: User = Depends(requi
                 "comments": s.comments, "released": s.released} if s else None,
             "feedback": [feedback_out(f, research=True) for f in fb],
             "versions": [version_out(v) for v in versions],
-            "revisions": revision_history(versions, s, fb)}
+            "revisions": revision_history(versions, s, fb),
+            "bandit_rating": _submission_bandit_status(db, s) if s else None}
+
+
+def _eligible_submission_decisions(db: Session, submission: Submission):
+    pairs = db.execute(select(FeedbackItem, BanditDecision).join(
+        BanditDecision, FeedbackItem.decision_id == BanditDecision.id).where(
+        FeedbackItem.assignment_id == submission.assignment_id,
+        FeedbackItem.student_id == submission.student_id,
+        FeedbackItem.venue == "on_demand", FeedbackItem.instructor_rating.is_(None),
+        BanditDecision.created_at <= submission.submitted_at,
+        BanditDecision.policy == "bandit", BanditDecision.applied.is_(False),
+        BanditDecision.reward_status == "pending", BanditDecision.instructor_score.is_(None))).all()
+    return [(f, d) for f, d in pairs if d.reward_config.get("enabled", True)
+            and d.reward_config.get("instructor_review_enabled", True)
+            and d.reward_config.get("mode", "combined") != "student_only"]
+
+
+def _submission_bandit_status(db: Session, submission: Submission):
+    saved = db.get(SubmissionBanditRating, submission.id)
+    return {"rating": saved.rating if saved else None,
+            "rated_at": iso(saved.created_at) if saved else None,
+            "rated_decisions": len(saved.decision_ids) if saved else 0,
+            "eligible_decisions": 0 if saved else len(_eligible_submission_decisions(db, submission))}
+
+
+class SubmissionBanditRatingIn(BaseModel):
+    rating: int = Field(strict=True, ge=1, le=5)
+
+
+@router.post("/submissions/{submission_id}/bandit-rating")
+def rate_submission_bandit(submission_id: int, body: SubmissionBanditRatingIn,
+                          user: User = Depends(require_instructor), db: Session = Depends(get_db)):
+    s = db.get(Submission, submission_id)
+    if s is None:
+        raise HTTPException(404, "Submission not found")
+    a = _assignment(db, user, s.assignment_id)
+    saved = db.get(SubmissionBanditRating, s.id)
+    if saved:
+        if saved.rating != body.rating:
+            raise HTTPException(409, "This bandit rating has already been recorded and cannot be replaced.")
+        return _submission_bandit_status(db, s)
+    pairs = _eligible_submission_decisions(db, s)
+    if not pairs:
+        raise HTTPException(409, "No pending bandit decisions accept an instructor rating for this submission.")
+    ids = [d.id for _, d in pairs]
+    db.add(SubmissionBanditRating(submission_id=s.id, rating=body.rating, decision_ids=ids))
+    for f, d in pairs:
+        f.instructor_rating = body.rating
+        f.instructor_rated_at = now()
+        d.instructor_score = bandit.instructor_score(body.rating)
+        bandit.refresh_reward(d)
+    log_event(db, user, "submission_bandit_rated", {"submission_id": s.id, "rating": body.rating,
+              "decision_ids": ids}, a.course_id, a.id, commit=False)
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(409, "A bandit rating was already recorded. Refresh the review.")
+    return _submission_bandit_status(db, s)
 
 
 class GradeIn(BaseModel):

@@ -134,6 +134,72 @@ def test_review_rounds_follow_feedback_requests(client, monkeypatch):
     assert rounds[4]["preceding_feedback"] is None
 
 
+def test_assignment_bandit_rating_is_separate_and_applied_once(client):
+    inst, stu, other = login(client, "drlee"), login(client, "priya"), login(client, "marcus")
+    course, a = course_and_assignment(client, inst)
+    base = f"/api/student/assignments/{a['id']}"
+    client.patch(f"/api/instructor/assignments/{a['id']}", headers=inst, json={"config": {
+        "on_demand_feedback": {"cooldown_seconds": 0}, "submission_rules": {"enabled": False},
+        "reward": {"mode": "instructor_only"}}})
+    feedback = [client.post(f"{base}/feedback", headers=stu, json={"content": LONG_DRAFT}).json() for _ in range(3)]
+    other_feedback = client.post(f"{base}/feedback", headers=other, json={"content": LONG_DRAFT}).json()
+    # One already finalized decision must not be overwritten by the overall rating.
+    client.post(f"/api/instructor/feedback/{feedback[0]['id']}/rating", headers=inst, json={"rating": 1})
+    sub = client.post(f"{base}/submit", headers=stu, json={"content": LONG_DRAFT}).json()
+    grade_url = f"/api/instructor/submissions/{sub['id']}/grade"
+    rating_url = f"/api/instructor/submissions/{sub['id']}/bandit-rating"
+    assert client.post(grade_url, headers=inst, json={"grade": "85", "comments": "Good work"}).status_code == 200
+    assert _decision_for(feedback[1]["id"]).instructor_score is None
+    assert client.post(rating_url, headers=stu, json={"rating": 5}).status_code == 403
+    for value in [0, 6, 2.5, True]:
+        assert client.post(rating_url, headers=inst, json={"rating": value}).status_code == 422
+    result = client.post(rating_url, headers=inst, json={"rating": 4})
+    assert result.status_code == 200, result.text
+    assert result.json()["rating"] == 4 and result.json()["rated_decisions"] == 2
+    for fb in feedback[1:]:
+        decision = _decision_for(fb["id"])
+        assert decision.instructor_score == 0.75 and decision.reward == 0.75
+        assert decision.reward_status == "final"
+    assert _decision_for(feedback[0]["id"]).reward == 0
+    assert _decision_for(other_feedback["id"]).instructor_score is None
+    assert client.post(rating_url, headers=inst, json={"rating": 4}).status_code == 200
+    assert client.post(rating_url, headers=inst, json={"rating": 5}).status_code == 409
+    with SessionLocal() as db:
+        from app.models import Submission, SubmissionBanditRating
+        from app.services.bandit import apply_finalized
+        saved = db.get(Submission, sub["id"])
+        assert saved.grade == "85" and saved.comments == "Good work" and not saved.released
+        assert db.get(SubmissionBanditRating, sub["id"]).rating == 4
+        updates = apply_finalized(db, course["id"])
+        assert sum(x["n"] for x in updates) == 3
+        assert sum(x["d_alpha"] for x in updates) == 1.5
+        assert apply_finalized(db, course["id"]) == []
+    assert client.post(grade_url, headers=inst, json={"grade": "A-"}).status_code == 200
+    assert _decision_for(feedback[1]["id"]).reward == 0.75
+    # Assignment deletion also removes the associated rating record.
+    assert client.delete(f"/api/instructor/assignments/{a['id']}", headers=inst).status_code == 200
+
+
+@pytest.mark.parametrize("config", [
+    {"reward": {"mode": "student_only"}},
+    {"reward": {"enabled": False}},
+    {"instructor_review": {"enabled": False}},
+    {"on_demand_feedback": {"style_policy": "fixed"}},
+])
+def test_assignment_bandit_rating_respects_reward_configuration(client, config):
+    inst, stu = login(client, "drlee"), login(client, "priya")
+    _, a = course_and_assignment(client, inst)
+    base = f"/api/student/assignments/{a['id']}"
+    client.patch(f"/api/instructor/assignments/{a['id']}", headers=inst,
+                 json={"config": {**config, "submission_rules": {"enabled": False}}})
+    fb = client.post(f"{base}/feedback", headers=stu, json={"content": LONG_DRAFT})
+    assert fb.status_code == 200, fb.text
+    sub = client.post(f"{base}/submit", headers=stu, json={"content": LONG_DRAFT}).json()
+    result = client.post(f"/api/instructor/submissions/{sub['id']}/bandit-rating", headers=inst, json={"rating": 5})
+    assert result.status_code == 409
+    assert _decision_for(fb.json()["id"]).instructor_score is None
+
+
 # ---------------------------------------------------------------- module registry
 
 def test_resolve_layers_and_dependencies():

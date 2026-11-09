@@ -398,6 +398,11 @@ h3.h { font-size: 16px; font-weight: 600; margin: 20px 0 4px; }
 .revision-writing ins, .revision-legend ins { color: #146333; background: #e2f4e6; text-decoration: underline; text-decoration-color: #459963; text-underline-offset: 3px; }
 .revision-document-footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; border-top: 1px solid #eeefec; padding: 12px 20px; }
 .review-grade { margin-top: 24px; border: 1px solid #e3e5e1; border-radius: 12px; padding: 24px; }
+.review-bandit-rating { border-top: 1px solid #e3e5e1; margin-top: 24px; padding-top: 24px; }
+.review-bandit-rating fieldset { border: 0; padding: 0; margin: 16px 0; }
+.bandit-rating-option { display: flex; align-items: center; gap: 8px; border: 1px solid #d6ddd7; border-radius: 7px; padding: 10px 16px; cursor: pointer; }
+.bandit-rating-option.selected { background: #edf5f0; border-color: #28774c; }
+.review-bandit-rating fieldset:disabled .bandit-rating-option { cursor: default; opacity: 0.7; }
 @media (max-width: 800px) {
   .review-workspace { grid-template-columns: 1fr; }
   .revision-sidebar { border-right: 0; border-bottom: 1px solid #e7e5e2; padding-right: 0; }

@@ -13,6 +13,7 @@ interface Revision {
 }
 interface Work {
   student: UserRef; draft: string; revisions: Revision[];
+  bandit_rating: BanditRatingStatus | null;
   submission: { id: number; content: string; submitted_at: string; grade: string | null; comments: string; released: boolean } | null;
 }
 
@@ -126,16 +127,60 @@ function ReviewPage({ aid, sid }: { aid: string; sid: string }) {
             {!submission ? <p className="muted">Grading opens after the student submits.</p> : <>
               <div className="row wrap small" style={{ marginBottom: 16 }}><span className="muted">Submitted {fmtDate(submission.submitted_at, true)}</span>
                 <button className="btn" onClick={() => choose(revisions.length - 1)}>View final submission</button></div>
-              <div className="field"><label htmlFor="overall-grade">Grade</label><input id="overall-grade" className="input" maxLength={32} value={grade.grade} placeholder="e.g. 85 or A-" onChange={e => setGrade({ ...grade, grade: e.target.value })} /></div>
+              <div className="field"><label htmlFor="overall-grade">Student grade</label><input id="overall-grade" className="input" maxLength={32} value={grade.grade} placeholder="e.g. 85 or A-" onChange={e => setGrade({ ...grade, grade: e.target.value })} /><span className="small muted">The student's assignment result. This does not train the bandit.</span></div>
               <div className="field"><label htmlFor="overall-comments">Overall comments</label><textarea id="overall-comments" className="textarea" rows={4} value={grade.comments} placeholder="Feedback on the assignment as a whole…" onChange={e => setGrade({ ...grade, comments: e.target.value })} /></div>
               <div className="row wrap"><span className="spacer" />
                 <button className="btn outline" disabled={!grade.grade.trim() || saving} onClick={() => saveGrade(false)}>{saving ? "Saving…" : "Save grade"}</button>
                 {!submission.released && <button className="btn primary" disabled={!grade.grade.trim() || saving} onClick={() => saveGrade(true)}>Save & release</button>}
               </div>
+              {w.data.bandit_rating && <BanditRatingPanel key={submission.id} submissionId={submission.id} initial={w.data.bandit_rating} />}
             </>}
           </section>
         </section>
       </div>
     </div></div>
   </>;
+}
+
+interface BanditRatingStatus {
+  rating: number | null;
+  rated_at: string | null;
+  rated_decisions: number;
+  eligible_decisions: number;
+}
+
+function BanditRatingPanel({ submissionId, initial }: { submissionId: number; initial: BanditRatingStatus }) {
+  const [status, setStatus] = useState(initial);
+  const [rating, setRating] = useState<number | null>(initial.rating);
+  const [saving, setSaving] = useState(false);
+  const toast = useToast();
+  const save = async () => {
+    if (rating === null || saving) return;
+    setSaving(true);
+    try {
+      const result = await api.post<BanditRatingStatus>(`/api/instructor/submissions/${submissionId}/bandit-rating`, { rating });
+      setStatus(result);
+      toast(`Bandit rating recorded for ${result.rated_decisions} feedback decisions`);
+    } catch (e) { toast((e as Error).message, true); }
+    finally { setSaving(false); }
+  };
+  const locked = status.rating !== null;
+  return <section className="review-bandit-rating" aria-label="Bandit feedback rating">
+    <h2>Bandit feedback rating</h2>
+    <p className="small muted">How helpful was the AI feedback across this assignment? This instructor-only rating is separate from the student's grade.</p>
+    <fieldset disabled={locked || saving || status.eligible_decisions === 0}>
+      <legend className="small">1 = Not helpful · 3 = Moderately helpful · 5 = Very helpful</legend>
+      <div className="row wrap" style={{ marginTop: 10 }}>
+        {[1, 2, 3, 4, 5].map(n => <label key={n} className={`bandit-rating-option ${rating === n ? "selected" : ""}`}>
+          <input type="radio" name={`bandit-rating-${submissionId}`} value={n} checked={rating === n} onChange={() => setRating(n)} />{n}
+        </label>)}
+      </div>
+    </fieldset>
+    {locked ? <p className="small" role="status">Recorded: {status.rating}/5 for {status.rated_decisions} feedback decisions. Rewards follow the configured student/instructor weighting and scheduled bandit updates.</p>
+      : status.eligible_decisions === 0 ? <p className="muted small">No pending bandit decisions can receive this rating. Feedback may not use the bandit, instructor rewards may be disabled, or rewards may already be finalized.</p>
+      : <>
+        <p className="small muted">One shared rating for {status.eligible_decisions} pending feedback decisions. Once recorded, it cannot be changed. Saving a student grade does not save this rating.</p>
+        <button className="btn outline" disabled={rating === null || saving} onClick={save}>{saving ? "Recording…" : "Record bandit rating"}</button>
+      </>}
+  </section>;
 }
