@@ -70,7 +70,6 @@ export function ModuleConfigEditor({
                   <div style={{ flex: 1, minWidth: 0, cursor: "pointer" }} onClick={() => setOpen({ ...open, [m.key]: !isOpen })}>
                     <div className="row" style={{ gap: 6 }}>
                       <span className="mod-title">{m.label}</span>
-                      {m.srs_refs.length > 0 && <span className="ref">{m.srs_refs.join(" · ")}</span>}
                       {nOwn > 0 && <Tag color="blue">{nOwn} setting{nOwn > 1 ? "s" : ""} changed</Tag>}
                       {blockedBy.length > 0 && <Tag color="orange">needs {blockedBy.join(", ")}</Tag>}
                     </div>

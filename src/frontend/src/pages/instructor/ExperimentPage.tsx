@@ -38,7 +38,7 @@ const TEMPLATES: { name: string; hypothesis: string; conditions: Condition[] }[]
   },
   {
     name: "Bandit vs random vs fixed style",
-    hypothesis: "Thompson Sampling beats random and the best fixed style on feedback score (MAB8).",
+    hypothesis: "Thompson Sampling beats random and the best fixed style on feedback score.",
     conditions: ["bandit", "random", "fixed"].map((p, i) => ({
       name: `${"ABC"[i]} · ${p}`, description: "", weight: 1, config: { on_demand_feedback: { style_policy: p } },
     })),

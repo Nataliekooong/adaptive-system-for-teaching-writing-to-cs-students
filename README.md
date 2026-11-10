@@ -2,6 +2,9 @@
 
 A McMaster University SE/CS capstone project exploring how an adaptive writing tutor can help computer science students develop technical writing skills while completing instructor-assigned work.
 
+**Running the app locally:** See [SETUP.md](SETUP.md) for dependencies, Windows/macOS/Linux startup commands,
+and demo logins. The implementation uses React/Vite, FastAPI, SQLite by default, and mock AI feedback.
+
 > **Status:** Early planning. This README describes the project brief, a proposed first prototype, and open decisions. The architecture, datasets, model, and evaluation protocol are not final.
 
 **Supervisor:** Angela Zavaleta Bernuy  
