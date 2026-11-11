@@ -272,7 +272,6 @@ h3.h { font-size: 16px; font-weight: 600; margin: 20px 0 4px; }
 .prov.here { color: var(--blue); }
 .reset { font-size: 11.5px; color: var(--text-3); cursor: pointer; border: none; background: none; padding: 0 4px; }
 .reset:hover { color: var(--text); text-decoration: underline; }
-.ref { font-size: 11px; color: var(--text-3); font-family: var(--mono); }
 
 /* modal */
 .overlay { position: fixed; inset: 0; background: rgba(15, 15, 15, 0.4); display: grid; place-items: center; z-index: 50; padding: 24px; }

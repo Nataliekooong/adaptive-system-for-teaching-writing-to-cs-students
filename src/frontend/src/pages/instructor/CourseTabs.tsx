@@ -232,7 +232,7 @@ export function StudentsTab({ course }: { course: Course }) {
         </tbody>
       </table>
       <h2 className="h">Common struggle areas</h2>
-      <div className="muted small" style={{ marginBottom: 8 }}>Aggregated from AI feedback by rubric priority area (I7).</div>
+      <div className="muted small" style={{ marginBottom: 8 }}>Aggregated from AI feedback by rubric priority area.</div>
       {(struggles.data ?? []).length === 0 && <div className="empty">No feedback yet.</div>}
       {(struggles.data ?? []).map((s) => (
         <div key={s.area} className="row" style={{ marginBottom: 6 }}>
@@ -302,7 +302,7 @@ export function LibraryTab({ course }: { course: Course }) {
 
   return (
     <>
-      <h2 className="h" style={{ marginTop: 4 }}>🎨 Feedback styles <span className="faint small" style={{ fontWeight: 400 }}>bandit arms · I10</span></h2>
+      <h2 className="h" style={{ marginTop: 4 }}>🎨 Feedback styles <span className="faint small" style={{ fontWeight: 400 }}>bandit arms</span></h2>
       <div className="muted small" style={{ marginBottom: 8 }}>Disabled styles are never selected by the bandit, random or fixed policies.</div>
       {!styles.data ? <Loading error={styles.error} /> : (
         <table className="table">
@@ -323,7 +323,7 @@ export function LibraryTab({ course }: { course: Course }) {
       )}
       <div className="board-add" style={{ marginTop: 4 }} onClick={() => setEditStyle({ key: "", name: "", description: "", prompt_template: "", enabled: true })}>＋ New style</div>
 
-      <h2 className="h">📌 Instructor-approved prompts <span className="faint small" style={{ fontWeight: 400 }}>fixed prompts · S9 · B6</span></h2>
+      <h2 className="h">📌 Instructor-approved prompts <span className="faint small" style={{ fontWeight: 400 }}>fixed prompts</span></h2>
       <div className="muted small" style={{ marginBottom: 8 }}>Used when a feedback venue's source is set to <i>fixed prompts</i> (e.g. the “Fixed prompts only” study condition).</div>
       {!prompts.data ? <Loading error={prompts.error} /> : (
         <table className="table">
@@ -420,7 +420,7 @@ export function ResearchTab({ course }: { course: Course }) {
         <button className="btn outline" onClick={() => download("csv")}>⬇ Events CSV</button>
         <button className="btn outline" onClick={() => download("json")}>⬇ JSON</button>
       </div>
-      <div className="muted small" style={{ margin: "4px 0 12px" }}>Thompson Sampling posteriors per learner-level context. Rewards are folded in on a schedule (MAB7) or now.</div>
+      <div className="muted small" style={{ margin: "4px 0 12px" }}>Thompson Sampling posteriors per learner-level context. Rewards are folded in on a schedule or now.</div>
       <Callout icon="⏱️" color={st.data.pending_update.length ? "yellow" : undefined}>
         <div className="row">
           <div style={{ flex: 1 }}>

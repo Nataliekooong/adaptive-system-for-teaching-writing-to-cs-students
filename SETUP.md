@@ -42,13 +42,79 @@ and chat panel vs character.
 
 ## Run locally
 
+### Requirements
+
+- **Node.js + npm** for the frontend. Node 22.15.0 and npm 10.9.2 are installed on this Windows machine.
+- **Python 3.12 + pip + venv** for the backend (matching the backend Docker image). The ordinary `python`
+  command on this Windows machine points to an unusable WindowsApps alias; the commands below include a working
+  bundled-runtime alternative.
+- **No separate database install, GPU, model download, API key, or `.env` file is needed** for the default demo.
+  SQLite is included with Python, and AI feedback uses the built-in mock provider.
+- Docker Desktop with Compose is optional for the container setup; it is not required for the native setup.
+
+Run npm commands in `src/frontend`, where `package.json` and the frontend lockfile live, rather than the repo root.
+`npm ci` installs all pinned frontend dependencies: React, React DOM, React Router, TypeScript, Vite, the React
+Vite plugin, and React type definitions. Backend dependencies are FastAPI, Uvicorn, SQLAlchemy, Pydantic, and
+Psycopg; `requirements-dev.txt` also installs pytest and HTTPX for testing. Both package managers install the
+required transitive dependencies automatically. The data preprocessing folder has separate requirements that
+are not needed to run the web app.
+
+### Windows (PowerShell)
+
+From the repository root, set up the backend once:
+
+```powershell
+cd src/backend
+python -m venv .venv
+# If `python` is the broken WindowsApps alias on this machine, use this instead:
+# & "$env:USERPROFILE/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe" -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
+```
+
+If neither Python command is available on another machine, install Python 3.12 with pip and add it to PATH,
+then open a new terminal. Virtual environment activation is unnecessary with these explicit executable paths.
+
+Start the backend in that terminal (also use this command on subsequent runs):
+
+```powershell
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+```
+
+In a second terminal, starting from the repository root:
+
+```powershell
+cd src/frontend
+npm.cmd ci                     # first setup, or after the lockfile changes
+npm.cmd run dev -- --host 127.0.0.1 --strictPort
+```
+
+Use `npm.cmd` to avoid PowerShell execution-policy errors from `npm.ps1`. Open **http://localhost:5173**;
+Vite proxies `/api` to the backend on port 8000. API documentation is at **http://127.0.0.1:8000/docs**.
+Keep both terminals running; press Ctrl+C in each to stop. On subsequent starts, run the backend command above
+and `npm.cmd run dev -- --host 127.0.0.1 --strictPort` from their respective folders.
+
+The backend creates `src/backend/writing_tutor.db` and seeds demo accounts on its first start. Use `drlee` for
+the instructor or `priya` for a student, with password `password`.
+
+Checks (from their respective folders):
+
+```powershell
+# src/frontend
+npm.cmd run typecheck
+npm.cmd run build
+# src/backend
+.\.venv\Scripts\python.exe -m pytest -q
+```
+
+### macOS / Linux
+
 ```bash
 # backend
 cd src/backend && python3 -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
 .venv/bin/uvicorn app.main:app --port 8000
 
 # frontend (another terminal)
-cd src/frontend && npm install && npm run dev   # http://localhost:5173
+cd src/frontend && npm ci && npm run dev   # http://localhost:5173
 ```
 
 SQLite is the zero-setup default. Set `DATABASE_URL=postgresql+psycopg://…` for PostgreSQL, or run

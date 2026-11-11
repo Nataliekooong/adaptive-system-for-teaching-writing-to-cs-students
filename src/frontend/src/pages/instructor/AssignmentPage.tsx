@@ -144,7 +144,7 @@ export default function AssignmentPage() {
               <div className="field"><label>Description</label><input className="input" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></div>
               <div className="field"><label>Instructions</label><textarea className="textarea" rows={5} value={form.instructions} onChange={(e) => setForm({ ...form, instructions: e.target.value })} /></div>
               <div className="field"><label>Genre guidance / example</label><textarea className="textarea" rows={4} value={form.genre_guidance} onChange={(e) => setForm({ ...form, genre_guidance: e.target.value })} /></div>
-              <div className="field"><label>🚀 “Get Started” outline & guiding questions (S10 — never a finished response)</label><textarea className="textarea" rows={7} value={form.get_started_content} onChange={(e) => setForm({ ...form, get_started_content: e.target.value })} /></div>
+              <div className="field"><label>🚀 “Get Started” outline & guiding questions (never a finished response)</label><textarea className="textarea" rows={7} value={form.get_started_content} onChange={(e) => setForm({ ...form, get_started_content: e.target.value })} /></div>
             </>
           )}
 
@@ -206,7 +206,7 @@ function StudentsPanel({ a, course, inherited, onSaved }: { a: Detail; course: C
   return (
     <>
       <Callout icon="👥">
-        Choose who gets this assignment (I3) and, if needed, the type of feedback each student receives (I5).
+        Choose who gets this assignment and, if needed, the type of feedback each student receives.
         Per-student settings are the most specific layer — they win over experiment conditions, so the A/B page flags them.
       </Callout>
       <div className="row" style={{ position: "sticky", top: 0, background: "#fff", padding: "8px 0", zIndex: 2 }}>
@@ -279,7 +279,7 @@ function SubmissionsPanel({ aid, onOpen }: { aid: number; onOpen: (sid: number) 
   return (
     <>
       <div className="row" style={{ marginBottom: 8 }}>
-        <span className="muted">Unreleased grades stay hidden from students (I11).</span><span className="spacer" />
+        <span className="muted">Unreleased grades stay hidden from students.</span><span className="spacer" />
         <button className="btn primary" disabled={!releasable.length} onClick={release}>Release {releasable.length} grade{releasable.length === 1 ? "" : "s"}</button>
       </div>
       <Board
