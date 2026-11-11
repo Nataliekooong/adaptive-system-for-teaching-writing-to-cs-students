@@ -300,6 +300,24 @@ def test_realtime_respects_module_and_trigger(client):
     assert client.post(f"/api/student/assignments/{a['id']}/realtime", headers=stu, json=body).json()["feedback"] is None
 
 
+def test_realtime_dismiss_records_reason(client):
+    inst, stu = login(client, "drlee"), login(client, "priya")
+    _, a = course_and_assignment(client, inst)
+    client.patch(f"/api/instructor/assignments/{a['id']}", headers=inst, json={"config": {
+        "realtime_feedback": {"enabled": True, "source": "fixed_prompts", "min_interval_seconds": 0}}})
+    body = {"excerpt": "Caching is a good thing.", "trigger": "idle"}
+    fb1 = client.post(f"/api/student/assignments/{a['id']}/realtime", headers=stu, json=body).json()["feedback"]
+    fb2 = client.post(f"/api/student/assignments/{a['id']}/realtime", headers=stu, json=body).json()["feedback"]
+    assert client.post(f"/api/student/feedback/{fb1['id']}/dismiss", headers=stu).json() == {"ok": True}
+    client.post(f"/api/student/feedback/{fb2['id']}/dismiss", headers=stu, json={"reason": "typing"})
+    assert client.post(f"/api/student/feedback/{fb2['id']}/dismiss", headers=stu,
+                       json={"reason": "other"}).status_code == 422
+    with SessionLocal() as db:
+        reasons = {e.payload["feedback_id"]: e.payload["reason"] for e in db.scalars(
+            select(EventLog).where(EventLog.assignment_id == a["id"], EventLog.type == "feedback_dismissed"))}
+    assert reasons == {fb1["id"]: "button", fb2["id"]: "typing"}
+
+
 def test_paste_blocked_when_disabled(client):
     inst, stu = login(client, "drlee"), login(client, "sam")
     _, a = course_and_assignment(client, inst)
