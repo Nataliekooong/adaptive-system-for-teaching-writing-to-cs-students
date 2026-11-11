@@ -40,7 +40,11 @@ export default function Workspace() {
   const [feedback, setFeedback] = useState<Feedback[]>([]);
   const [busyFb, setBusyFb] = useState(false);
   const [panelOpen, setPanelOpen] = useState(true);
-  const [rt, setRt] = useState<{ fb: Feedback; excerpt: string } | null>(null);
+  // base: the draft text when the tip appeared; any later edit hides it (S9: never interrupt active writing)
+  const [rt, setRt] = useState<{ fb: Feedback; excerpt: string; base: string } | null>(null);
+  const [anchorTop, setAnchorTop] = useState<number | null>(null);
+  const anchorRef = useRef<HTMLSpanElement>(null);
+  const wrapRef = useRef<HTMLDivElement>(null);
   const rtCount = useRef(0);
   const [getStarted, setGetStarted] = useState<string | null>(null);
   const [versions, setVersions] = useState<Version[] | null>(null);
@@ -205,7 +209,7 @@ export default function Workspace() {
       });
       if (r.feedback) {
         rtCount.current++;
-        setRt({ fb: r.feedback, excerpt });
+        setRt({ fb: r.feedback, excerpt, base: textRef.current });
         setFeedback((xs) => [r.feedback!, ...xs]);
       }
     } catch { /* real-time tips are best-effort */ }
@@ -213,10 +217,28 @@ export default function Workspace() {
 
   useRealtimeTriggers(text, cfg, !locked && !rt, fireRealtime);
 
-  const dismissRt = () => {
-    if (rt) api.post(`/api/student/feedback/${rt.fb.id}/dismiss`).catch(() => undefined);
+  const dismissRt = (reason: "button" | "typing" = "button") => {
+    if (rt) api.post(`/api/student/feedback/${rt.fb.id}/dismiss`, { reason }).catch(() => undefined);
     setRt(null);
   };
+
+  // Hide the tip as soon as the student resumes writing.
+  useEffect(() => {
+    if (rt && text !== rt.base) dismissRt("typing");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [text]);
+
+  // Popup presentation: place the card just below the end of the triggering excerpt.
+  useLayoutEffect(() => {
+    if (!rt || String(cfg?.realtime_feedback.presentation) !== "popup") { setAnchorTop(null); return; }
+    const measure = () => {
+      const s = anchorRef.current, w = wrapRef.current;
+      if (s && w) setAnchorTop(s.getBoundingClientRect().bottom - w.getBoundingClientRect().top + 10);
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [rt, cfg]);
 
   // ---------- other actions ----------
   const openGetStarted = async () => {
@@ -277,6 +299,12 @@ export default function Workspace() {
   if (rt && rtMode === "highlight" && rt.excerpt) {
     hlStart = text.lastIndexOf(rt.excerpt);
     hlEnd = hlStart >= 0 ? hlStart + rt.excerpt.length : -1;
+  }
+  // popup presentation: invisible anchor at the end of the excerpt (falls back to the end of the draft)
+  let anchorAt = -1;
+  if (rt && rtMode === "popup") {
+    const i = rt.excerpt ? text.lastIndexOf(rt.excerpt) : -1;
+    anchorAt = i >= 0 ? i + rt.excerpt.length : text.length;
   }
 
   const saveLabel = locked ? "Read-only · submitted"
@@ -377,10 +405,12 @@ export default function Workspace() {
             )}
 
             <div className="divider" style={{ marginTop: 16 }} />
-            <div className="editor-wrap">
+            <div className="editor-wrap" ref={wrapRef}>
               <div className="editor-backdrop" aria-hidden>
                 {hlStart >= 0 ? (
                   <>{text.slice(0, hlStart)}<mark>{text.slice(hlStart, hlEnd)}</mark>{text.slice(hlEnd)}{"\n"}</>
+                ) : anchorAt >= 0 ? (
+                  <>{text.slice(0, anchorAt)}<span ref={anchorRef} />{text.slice(anchorAt)}{"\n"}</>
                 ) : text + "\n"}
               </div>
               <textarea
@@ -388,10 +418,15 @@ export default function Workspace() {
                 placeholder={locked ? "" : "Start writing… (blank line = new paragraph)"}
                 onChange={(e) => applyText(e.target.value)} onKeyDown={onKeyDown} onPaste={onPaste}
               />
+              {rt && rtMode === "popup" && (
+                <RealtimeView fb={rt.fb} mode="popup" anchorTop={anchorTop}
+                              canRate={canRate && !!cfg.realtime_feedback.allow_rating}
+                              onRate={(h) => rate(rt.fb, h)} onDismiss={() => dismissRt()} />
+              )}
             </div>
             {rt && rtMode === "highlight" && (
               <RealtimeView fb={rt.fb} mode="highlight" canRate={canRate && !!cfg.realtime_feedback.allow_rating}
-                            onRate={(h) => rate(rt.fb, h)} onDismiss={dismissRt} />
+                            onRate={(h) => rate(rt.fb, h)} onDismiss={() => dismissRt()} />
             )}
           </div>
         </div>
@@ -414,9 +449,9 @@ export default function Workspace() {
         )}
       </div>
 
-      {rt && rtMode !== "highlight" && (
+      {rt && rtMode !== "highlight" && rtMode !== "popup" && (
         <RealtimeView fb={rt.fb} mode={rtMode} canRate={canRate && !!cfg.realtime_feedback.allow_rating}
-                      onRate={(h) => rate(rt.fb, h)} onDismiss={dismissRt} />
+                      onRate={(h) => rate(rt.fb, h)} onDismiss={() => dismissRt()} />
       )}
 
       {confirm === "restore" && (

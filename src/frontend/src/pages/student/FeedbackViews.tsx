@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { timeAgo } from "../../config";
 import type { Feedback } from "../../types";
 import { Tag } from "../../ui";
@@ -12,11 +13,15 @@ export function RateButtons({ fb, onRate }: { fb: Feedback; onRate: (helpful: bo
   );
 }
 
-export function FeedbackBody({ fb }: { fb: Feedback }) {
+/** `compact` (real-time tips): skip the summary line and show the items directly. */
+export function FeedbackBody({ fb, compact = false }: { fb: Feedback; compact?: boolean }) {
+  const items = compact ? fb.content.items : fb.content.items.filter((it) => it.comment !== fb.content.summary);
   return (
     <>
-      <div style={{ fontWeight: 500, marginBottom: fb.content.items.length ? 6 : 0 }}>{fb.content.summary}</div>
-      {fb.content.items.filter((it) => it.comment !== fb.content.summary).map((it, i) => (
+      {!(compact && items.length) && (
+        <div style={{ fontWeight: 500, marginBottom: items.length ? 6 : 0 }}>{fb.content.summary}</div>
+      )}
+      {items.map((it, i) => (
         <div className="fb-item" key={i}>
           <Tag color="purple">{it.rubric_area}</Tag>
           {it.quote && <div className="fb-quote">“{it.quote}”</div>}
@@ -79,13 +84,22 @@ export function CharacterPanel({ items, canRate, onRate }: {
   );
 }
 
-/** Real-time presentations (popup / window / highlight note) — itself an A/B variable. */
-export function RealtimeView({ fb, mode, canRate, onRate, onDismiss }: {
+/**
+ * Real-time presentations (popup / window / highlight note) — itself an A/B variable.
+ * `anchorTop`: popup is placed just below the text that triggered it (px from the top of `.editor-wrap`).
+ */
+export function RealtimeView({ fb, mode, canRate, onRate, onDismiss, anchorTop }: {
   fb: Feedback; mode: string; canRate: boolean; onRate: (h: boolean) => void; onDismiss: () => void;
+  anchorTop?: number | null;
 }) {
+  const popRef = useRef<HTMLDivElement>(null);
+  const anchored = mode === "popup" && anchorTop != null;
+  useEffect(() => {
+    if (anchored) popRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [anchored, fb.id]);
   const body = (
     <>
-      <FeedbackBody fb={fb} />
+      <FeedbackBody fb={fb} compact />
       <div className="row" style={{ marginTop: 6 }}>
         {canRate && <RateButtons fb={fb} onRate={onRate} />}
         <span className="spacer" />
@@ -106,5 +120,9 @@ export function RealtimeView({ fb, mode, canRate, onRate, onDismiss }: {
   if (mode === "highlight") {
     return <div className="rt-highlight-note"><div className="small faint" style={{ marginBottom: 4 }}>🖍️ About the highlighted text</div>{body}</div>;
   }
-  return <div className="rt-popup"><div className="small faint" style={{ marginBottom: 4 }}>⚡ Quick tip</div>{body}</div>;
+  return (
+    <div ref={popRef} className={`rt-popup${anchored ? " anchored" : ""}`} style={anchored ? { top: anchorTop! } : undefined}>
+      <div className="small faint" style={{ marginBottom: 4 }}>⚡ Quick tip</div>{body}
+    </div>
+  );
 }

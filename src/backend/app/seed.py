@@ -35,12 +35,35 @@ STYLES = [
 ]
 
 FIXED_PROMPTS = [
+    # idle: the student paused after a finished sentence (planning / stuck)
     ("idle", "", "Stuck? Try writing the next sentence badly on purpose — you can fix it later."),
+    ("idle", "", "Not sure what comes next? Jot three keywords for your next idea, then build a sentence from them."),
     ("idle", "Organization", "Re-read your last paragraph: what is its one job in the document?"),
+    ("idle", "Organization", "What should the reader know by the end of your next paragraph? Note that down first."),
+    ("idle", "Thesis & Purpose", "Look back at your main claim. Does the point you're about to make move it forward?"),
+    ("idle", "Evidence & Support", "Is there a number, example or source that would back up "
+                                   "what you just wrote?"),
+    ("idle", "Audience Awareness", "Picture a classmate reading this. What would they ask next? "
+                                   "Consider answering it."),
+    # sentence_end: a sentence was finished and left unchanged (polish what was just written)
     ("sentence_end", "Clarity & Concision", "Read that sentence aloud. Could you say it in fewer words?"),
+    ("sentence_end", "Clarity & Concision", "Does that sentence carry one idea or two? If two, consider splitting it."),
     ("sentence_end", "Technical Precision", "Is there a vague word in that sentence you could replace with a "
                                             "specific term or number?"),
+    ("sentence_end", "Grammar & Mechanics", "Quick check: who or what is doing the action in that sentence?"),
+    ("sentence_end", "Audience Awareness", "Any acronym or term your reader might not know? Define it the first time."),
+    ("sentence_end", "Thesis & Purpose", "How does that sentence connect back to your main claim?"),
+    # deletion: lots of text removed in a short time (struggle)
     ("deletion", "", "Lots of rewriting here. Try jotting the idea as a bullet first, then turn it into prose."),
+    ("deletion", "", "Rewriting a lot? Say the point out loud as if explaining it to a friend, "
+                     "then type what you said."),
+    ("deletion", "", "A first draft is allowed to be rough. Mark this spot, keep going, and come back to it later."),
+    ("deletion", "Organization", "If this part is hard to write, it may be in the wrong place. "
+                                 "Would it fit better earlier or later?"),
+    ("deletion", "Clarity & Concision", "Try finishing this in your head first: “The point I'm making here is…”"),
+    ("deletion", "Thesis & Purpose", "Hard to phrase? Check that you've decided what you want to claim "
+                                     "in this part."),
+    # on-demand (fixed_prompts source) and any venue
     ("on_demand", "Thesis & Purpose", "Can a reader find your main claim in the first paragraph?"),
     ("on_demand", "Evidence & Support", "Pick your strongest claim. What evidence would convince a skeptical reader?"),
     ("any", "Audience Awareness", "Who is your reader? Underline one term they might not know."),
