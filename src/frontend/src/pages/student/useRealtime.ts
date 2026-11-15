@@ -18,6 +18,7 @@ export function useRealtimeTriggers(
   text: string, config: Config | undefined, active: boolean, fire: (t: Trigger, excerpt: string) => void,
 ) {
   const deleted = useRef<{ t: number; n: number }[]>([]);
+  const armed = useRef(false);
   const prev = useRef(text);
   const firedFor = useRef<string>("");
   const fireRef = useRef(fire);
@@ -26,19 +27,25 @@ export function useRealtimeTriggers(
   const rt = config?.realtime_feedback;
   const on = !!(active && rt?.enabled);
 
-  // Deletion bursts: count characters removed in the last 60 s.
+  // Deletion bursts: count characters removed in the last 60 s. Once over the threshold the trigger stays
+  // armed and fires 1.5 s after editing pauses (each further edit restarts the wait instead of cancelling it).
   useEffect(() => {
     const removed = prev.current.length - text.length;
     prev.current = text;
-    if (!on || !rt!.trigger_deletion || removed <= 0) return;
-    const now = Date.now();
-    deleted.current = [...deleted.current.filter((d) => now - d.t < 60_000), { t: now, n: removed }];
-    const total = deleted.current.reduce((s, d) => s + d.n, 0);
-    if (total >= (rt!.deletion_threshold as number)) {
-      deleted.current = [];
-      const id = setTimeout(() => fireRef.current("deletion", lastSentences(text, rt!.context_sentences as number)), 1500);
-      return () => clearTimeout(id);
+    if (!on || !rt!.trigger_deletion) { deleted.current = []; armed.current = false; return; }
+    if (removed > 0) {
+      const now = Date.now();
+      deleted.current = [...deleted.current.filter((d) => now - d.t < 60_000), { t: now, n: removed }];
+      const total = deleted.current.reduce((s, d) => s + d.n, 0);
+      if (total >= (rt!.deletion_threshold as number)) armed.current = true;
     }
+    if (!armed.current) return;
+    const id = setTimeout(() => {
+      armed.current = false;
+      deleted.current = [];
+      fireRef.current("deletion", lastSentences(text, rt!.context_sentences as number));
+    }, 1500);
+    return () => clearTimeout(id);
   }, [text, on, rt]);
 
   // Idle / sentence-settled timers restart on every edit (i.e. only fire when typing has paused).

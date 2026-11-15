@@ -18,7 +18,7 @@ Status: ✅ done · 🟡 partial · ⬜ not started. "Module" is the `app/module
 | S6 | Undo / redo | P0 | ✅ | — | `Workspace.tsx` (own history stack, ⌘Z / ⇧⌘Z) |
 | S7 | Restore most recently saved draft after confirmation | P0 | ✅ | `version_history` | `/restore` |
 | S8 | Request AI feedback; past feedback in side panel; never unrequested | P0 | ✅ (mock SLM) | `on_demand_feedback` | `pipeline.on_demand`, `FeedbackViews.tsx` |
-| S9 | Instructor-approved prompt on writing-process signals, after typing pauses, dismissible, frequency-limited | P1 | ✅ | `realtime_feedback` | `useRealtime.ts`, `pipeline.realtime` |
+| S9 | Instructor-approved prompt on writing-process signals, after typing pauses, dismissible, frequency-limited | P1 | ✅ | `realtime_feedback` | `useRealtime.ts`, `pipeline.realtime`; popup anchored below the triggering text and hidden when typing resumes (dismiss reason logged) |
 | S10 | “Get Started” outline / guiding questions, never a completed response | P1 | ✅ | `get_started` | `/get-started`, `Assignment.get_started_content` |
 | S11 | Optionally rate feedback helpful / unhelpful | P0 | ✅ | `student_rating` | `/feedback/{id}/rating` |
 | S12 | Check minimum word / paragraph count before submission | P2 | ✅ | `submission_rules` | `/submit` |

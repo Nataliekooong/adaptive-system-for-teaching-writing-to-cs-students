@@ -275,13 +275,19 @@ def rate_feedback(feedback_id: int, body: RatingIn, user: User = Depends(require
     return feedback_out(f)
 
 
+class DismissIn(BaseModel):
+    reason: Literal["button", "typing"] = "button"  # "typing": real-time tip hidden when writing resumed (S9)
+
+
 @router.post("/feedback/{feedback_id}/dismiss")
-def dismiss_feedback(feedback_id: int, user: User = Depends(require_student), db: Session = Depends(get_db)):
+def dismiss_feedback(feedback_id: int, body: DismissIn | None = None, user: User = Depends(require_student),
+                     db: Session = Depends(get_db)):
     f = _own_feedback(db, user, feedback_id)
     f.dismissed = True
     db.commit()
     a = db.get(Assignment, f.assignment_id)
-    log_event(db, user, "feedback_dismissed", {"feedback_id": f.id}, a.course_id, a.id, f.condition_id)
+    log_event(db, user, "feedback_dismissed", {"feedback_id": f.id, "reason": (body or DismissIn()).reason},
+              a.course_id, a.id, f.condition_id)
     return {"ok": True}
 
 
