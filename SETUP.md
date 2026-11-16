@@ -131,6 +131,9 @@ The response must be `{content: {summary, items:[{rubric_area, comment, suggesti
 `MOCK_SLM_FAIL=1` simulates an outage, so you can see the "draft preserved" error path.
 
 ## Layout
+
+Frontend styling and shared UI conventions: [docs/frontend-design.md](docs/frontend-design.md).
+
 ```
 src/backend/app/modules.py            module registry + layered resolution
 src/backend/app/services/             config_resolver, pipeline, bandit, bkt, feedback_service, events

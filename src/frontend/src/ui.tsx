@@ -1,15 +1,61 @@
-/* Notion-style UI primitives */
+import { icons } from "./icons";
+/* Shared UI behavior; appearance and sizing are defined in theme.css and styles.css. */
 import {
+  Children,
+  cloneElement,
   createContext,
   useCallback,
   useContext,
   useEffect,
+  useId,
   useState,
+  isValidElement,
   type ReactNode,
 } from "react";
 import { useNavigate } from "react-router-dom";
 
 export type TagColor = "gray" | "orange" | "yellow" | "green" | "blue" | "purple" | "pink" | "red" | "brown";
+
+/** Associates the shared label with its native control, including inside dialogs. */
+export function Field({ label, children, hint }: { label: ReactNode; children: ReactNode; hint?: ReactNode }) {
+  const generatedId = useId();
+  const items = Children.toArray(children);
+  const control = items.find((child) =>
+    isValidElement<{ id?: string }>(child) && typeof child.type === "string" && ["input", "select", "textarea"].includes(child.type),
+  );
+  const controlId = isValidElement<{ id?: string }>(control) ? control.props.id ?? generatedId : generatedId;
+  return (
+    <div className="field">
+      <label className="field-label" htmlFor={controlId}>{label}</label>
+      {items.map((child) => child === control && isValidElement<{ id?: string; "aria-describedby"?: string }>(child)
+        ? cloneElement(child, { id: controlId, "aria-describedby": [child.props["aria-describedby"], hint ? `${controlId}-hint` : undefined].filter(Boolean).join(" ") || undefined })
+        : child)}
+      {hint && <div id={`${controlId}-hint`} className="field-hint">{hint}</div>}
+    </div>
+  );
+}
+
+/** Native radios give every five-point question the same sizing and keyboard behavior. */
+export function RatingScale({ label, value, onChange, low, high, disabled = false }: {
+  label: ReactNode; value: number | null; onChange: (value: number) => void;
+  low?: string; high?: string; disabled?: boolean;
+}) {
+  const name = useId();
+  return (
+    <fieldset className="rating-scale field" disabled={disabled}>
+      <legend className="field-label">{label}</legend>
+      <div className="rating-options">
+        {[1, 2, 3, 4, 5].map((n) => (
+          <label key={n} className="rating-option">
+            <input className="sr-only" type="radio" name={name} value={n} checked={value === n} onChange={() => onChange(n)} />
+            <span>{n}</span>
+          </label>
+        ))}
+      </div>
+      {(low || high) && <div className="rating-endpoints"><span>{low}</span><span>{high}</span></div>}
+    </fieldset>
+  );
+}
 
 export function Tag({ color = "gray", dot, children }: { color?: TagColor; dot?: boolean; children: ReactNode }) {
   return (
@@ -54,7 +100,7 @@ export function Topbar({ crumbs, right, onToggleSidebar }: {
   return (
     <div className="topbar">
       {onToggleSidebar && (
-        <button className="icon-btn" title="Toggle sidebar" onClick={onToggleSidebar}>☰</button>
+        <button className="icon-btn" title="Toggle sidebar" onClick={onToggleSidebar}>{icons.menu}</button>
       )}
       <div className="crumbs">
         {crumbs.map((c, i) => (
@@ -77,7 +123,7 @@ export function PageHeader({ icon, title, sub, children }: {
 }) {
   return (
     <div>
-      <div className="page-icon">{icon}</div>
+      <div className="page-icon" aria-hidden="true">{icon}</div>
       <h1 className="page-title">{title}</h1>
       {sub && <div className="page-sub">{sub}</div>}
       {children}
@@ -94,7 +140,7 @@ export function Prop({ icon, label, children, editable }: {
 }) {
   return (
     <div className="prop">
-      <div className="prop-key"><span style={{ width: 18, textAlign: "center" }}>{icon}</span>{label}</div>
+      <div className="prop-key"><span className="prop-icon" aria-hidden="true">{icon}</span>{label}</div>
       <div className={`prop-val ${editable ? "editable" : ""}`}>{children}</div>
     </div>
   );
@@ -108,10 +154,10 @@ export function Views({ tabs, active, onChange, right }: {
   return (
     <div className="views">
       {tabs.map((t) => (
-        <div key={t.key} className={`view-tab ${t.key === active ? "active" : ""}`} onClick={() => onChange(t.key)}>
-          <span>{t.icon}</span>{t.label}
+        <button type="button" key={t.key} className={`view-tab ${t.key === active ? "active" : ""}`} aria-pressed={t.key === active} onClick={() => onChange(t.key)}>
+          <span aria-hidden="true">{t.icon}</span>{t.label}
           {t.count !== undefined && <span className="count">{t.count}</span>}
-        </div>
+        </button>
       ))}
       <div className="spacer" />
       {right}
@@ -135,7 +181,7 @@ export function Board<T>({ columns, renderCard, onAdd, addLabel = "New" }: {
           {col.items.map(renderCard)}
           {onAdd && (
             <div className="board-add" onClick={() => onAdd(col.key)}>
-              <span>＋</span>{addLabel}
+              <span>{icons.add}</span>{addLabel}
             </div>
           )}
         </div>
@@ -159,10 +205,10 @@ export function ToggleBlock({ title, children, defaultOpen = false }: {
   const [open, setOpen] = useState(defaultOpen);
   return (
     <div>
-      <div className="toggle-head" onClick={() => setOpen(!open)}>
-        <span className={`caret ${open ? "open" : ""}`}>▶</span>
+      <button type="button" className="toggle-head" aria-expanded={open} onClick={() => setOpen(!open)}>
+        <span className={`caret ${open ? "open" : ""}`}>{icons.expand}</span>
         <span style={{ fontWeight: 500 }}>{title}</span>
-      </div>
+      </button>
       {open && <div className="toggle-body">{children}</div>}
     </div>
   );
@@ -221,7 +267,7 @@ export function useLoad<T>(fn: () => Promise<T>, deps: unknown[]): {
 }
 
 export function Loading({ error }: { error?: string | null }) {
-  return <div className="empty">{error ? `⚠️ ${error}` : "Loading…"}</div>;
+  return <div className="empty">{error ? `${icons.warning} ${error}` : "Loading…"}</div>;
 }
 
 export const STATUS_COLORS: Record<string, TagColor> = {

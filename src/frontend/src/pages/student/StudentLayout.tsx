@@ -1,3 +1,4 @@
+import { icons, assignmentStatusIcons } from "../../icons";
 import { useState } from "react";
 import { Outlet, useNavigate, useOutletContext, useParams, useLocation } from "react-router-dom";
 import { api } from "../../api";
@@ -16,7 +17,6 @@ interface Ctx {
 
 export const useStudentCtx = () => useOutletContext<Ctx>();
 
-const STATUS_ICON = { in_progress: "📝", submitted: "📨", graded: "✅" };
 
 export default function StudentLayout() {
   const { me, logout } = useAuth();
@@ -41,11 +41,11 @@ export default function StudentLayout() {
             <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {me!.display_name}
             </span>
-            <button className="icon-btn" title="Collapse sidebar" onClick={() => setCollapsed(true)}>«</button>
+            <button className="icon-btn" title="Collapse sidebar" onClick={() => setCollapsed(true)}>{icons.collapse}</button>
           </div>
           <div className="sb-scroll">
             <div className={`sb-item ${loc.pathname === "/s" ? "active" : ""}`} onClick={() => nav("/s")}>
-              <span className="ico">🏠</span><span className="label">Home</span>
+              <span className="ico">{icons.home}</span><span className="label">Home</span>
             </div>
             {byCourse.map((code) => (
               <div key={code}>
@@ -55,7 +55,7 @@ export default function StudentLayout() {
                     key={a.id} className={`sb-item ${String(a.id) === aid ? "active" : ""}`}
                     onClick={() => nav(`/s/assignments/${a.id}`)}
                   >
-                    <span className="ico">{STATUS_ICON[a.status]}</span>
+                    <span className="ico">{assignmentStatusIcons[a.status]}</span>
                     <span className="label">{a.title}</span>
                   </div>
                 ))}
@@ -64,7 +64,7 @@ export default function StudentLayout() {
           </div>
           <div className="sb-footer">
             <div className="sb-item" onClick={() => logout().then(() => nav("/login"))}>
-              <span className="ico">↩︎</span><span className="label">Log out</span>
+              <span className="ico">{icons.logout}</span><span className="label">Log out</span>
             </div>
           </div>
         </div>

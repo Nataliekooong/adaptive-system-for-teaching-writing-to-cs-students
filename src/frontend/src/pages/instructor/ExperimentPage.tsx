@@ -1,3 +1,4 @@
+import { icons } from "../../icons";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api } from "../../api";
@@ -108,7 +109,7 @@ export default function ExperimentPage() {
   }).then((ok) => ok && toast("Saved"));
   const setStatus = async (status: Experiment["status"]) => {
     if (dirty && !(await patch({ name: form.name, hypothesis: form.hypothesis, assignment_id: form.assignment_id, strategy: form.strategy, conditions: form.conditions }))) return;
-    if (await patch({ status })) toast(status === "active" ? "Experiment is live 🚀" : `Experiment ${status}`);
+    if (await patch({ status })) toast(status === "active" ? ("Experiment is live " + icons.getStarted) : `Experiment ${status}`);
   };
   const del = async () => {
     try {
@@ -127,53 +128,53 @@ export default function ExperimentPage() {
       <Topbar
         onToggleSidebar={toggleSidebar}
         crumbs={[
-          { label: course.code, icon: "🎓", to: `/i/courses/${course.id}` },
-          { label: "A/B experiments", icon: "🧪", to: `/i/courses/${course.id}/experiments` },
+          { label: course.code, icon: icons.course, to: `/i/courses/${course.id}` },
+          { label: "A/B experiments", icon: icons.experiments, to: `/i/courses/${course.id}/experiments` },
           { label: e.name },
         ]}
         right={
           <div className="row" style={{ gap: 4 }}>
             {e.status === "draft" && <button className="btn danger" onClick={del}>Delete</button>}
-            {(e.status === "draft" || e.status === "paused") && <button className="btn primary" onClick={() => setStatus("active")}>▶ {e.status === "paused" ? "Resume" : "Start experiment"}</button>}
-            {e.status === "active" && <button className="btn outline" onClick={() => setStatus("paused")}>⏸ Pause</button>}
-            {(e.status === "active" || e.status === "paused") && <button className="btn outline" onClick={() => setStatus("completed")}>■ Complete</button>}
+            {(e.status === "draft" || e.status === "paused") && <button className="btn primary" onClick={() => setStatus("active")}>{icons.expand} {e.status === "paused" ? "Resume" : "Start experiment"}</button>}
+            {e.status === "active" && <button className="btn outline" onClick={() => setStatus("paused")}>{icons.paused} Pause</button>}
+            {(e.status === "active" || e.status === "paused") && <button className="btn outline" onClick={() => setStatus("completed")}>{icons.stop} Complete</button>}
           </div>
         }
       />
       <div className="content">
         <div className="page wide">
-          <PageHeader icon="🧪" title={<input className="page-title-input" value={form.name} onChange={(ev) => setForm({ ...form, name: ev.target.value })} />} />
+          <PageHeader icon={icons.experiments} title={<input className="page-title-input" value={form.name} onChange={(ev) => setForm({ ...form, name: ev.target.value })} />} />
           <Props>
-            <Prop icon="◉" label="Status"><Tag dot color={STATUS_COLORS[e.status]}>{e.status === "active" ? "running" : e.status}</Tag></Prop>
-            <Prop icon="🎯" label="Scope" editable>
-              <select className="select" style={{ width: 300 }} disabled={locked} value={form.assignment_id ?? ""}
+            <Prop icon={icons.status} label="Status"><Tag dot color={STATUS_COLORS[e.status]}>{e.status === "active" ? "running" : e.status}</Tag></Prop>
+            <Prop icon={icons.target} label="Scope" editable>
+              <select className="select" disabled={locked} value={form.assignment_id ?? ""}
                       onChange={(ev) => setForm({ ...form, assignment_id: ev.target.value ? Number(ev.target.value) : null })}>
                 <option value="">Whole course (all assignments)</option>
-                {assignments.map((a) => <option key={a.id} value={a.id}>📝 {a.title}</option>)}
+                {assignments.map((a) => <option key={a.id} value={a.id}>{icons.assignment} {a.title}</option>)}
               </select>
             </Prop>
-            <Prop icon="🎲" label="Assignment strategy" editable>
-              <select className="select" style={{ width: 300 }} value={form.strategy} onChange={(ev) => setForm({ ...form, strategy: ev.target.value as Experiment["strategy"] })}>
+            <Prop icon={icons.random} label="Assignment strategy" editable>
+              <select className="select" value={form.strategy} onChange={(ev) => setForm({ ...form, strategy: ev.target.value as Experiment["strategy"] })}>
                 <option value="balanced">Balanced — fill conditions evenly (by weight)</option>
                 <option value="random">Random — weighted coin flip per student</option>
                 <option value="manual">Manual — I place students myself</option>
               </select>
             </Prop>
-            <Prop icon="💡" label="Hypothesis" editable>
+            <Prop icon={icons.idea} label="Hypothesis" editable>
               <input className="input ghost" value={form.hypothesis} placeholder="What do you expect to happen?" onChange={(ev) => setForm({ ...form, hypothesis: ev.target.value })} />
             </Prop>
-            <Prop icon="🕐" label="Created">{fmtDate(e.created_at, true)}</Prop>
+            <Prop icon={icons.created} label="Created">{fmtDate(e.created_at, true)}</Prop>
           </Props>
           <Views
             tabs={[
-              { key: "design", label: "Conditions", icon: "🧩", count: form.conditions.length },
-              { key: "participants", label: "Participants", icon: "👥" },
-              { key: "results", label: "Results", icon: "📊" },
+              { key: "design", label: "Conditions", icon: icons.modules, count: form.conditions.length },
+              { key: "participants", label: "Participants", icon: icons.students },
+              { key: "results", label: "Results", icon: icons.research },
             ]}
             active={tab} onChange={setTab}
             right={tab === "design" && (
               <div className="row" style={{ gap: 4, paddingBottom: 6 }}>
-                {e.status === "draft" && <button className="btn" onClick={() => setTemplates(true)}>✨ Templates</button>}
+                {e.status === "draft" && <button className="btn" onClick={() => setTemplates(true)}>{icons.template} Templates</button>}
                 {dirty && <button className="btn" onClick={() => setForm(e)}>Discard</button>}
                 <button className="btn primary" disabled={!dirty} onClick={save}>Save</button>
               </div>
@@ -183,22 +184,22 @@ export default function ExperimentPage() {
           {tab === "design" && (
             <>
               {e.status === "active" && (
-                <Callout icon="⚠️" color="yellow">This experiment is running. Editing a condition changes what its students see from now on; results before and after the edit will be mixed.</Callout>
+                <Callout icon={icons.warning} color="yellow">This experiment is running. Editing a condition changes what its students see from now on; results before and after the edit will be mixed.</Callout>
               )}
               {form.conditions.map((c, i) => {
                 const color = COND_COLORS[i % COND_COLORS.length];
                 const open = openCond === i;
                 return (
-                  <div key={c.id ?? `new${i}`} className="fb-card" style={{ padding: "12px 16px" }}>
+                  <div key={c.id ?? `new${i}`} className="fb-card">
                     <div className="row">
-                      <span className={`caret ${open ? "open" : ""}`} style={{ cursor: "pointer" }} onClick={() => setOpenCond(open ? null : i)}>▶</span>
+                      <span className={`caret ${open ? "open" : ""}`} style={{ cursor: "pointer" }} onClick={() => setOpenCond(open ? null : i)}>{icons.expand}</span>
                       <Tag color={color} dot>Condition {String.fromCharCode(65 + i)}</Tag>
-                      <input className="input ghost" style={{ fontWeight: 600, fontSize: 15, flex: 1 }} value={c.name} onChange={(ev) => setCond(i, { name: ev.target.value })} />
+                      <input className="input ghost condition-name" value={c.name} onChange={(ev) => setCond(i, { name: ev.target.value })} />
                       <span className="faint small">weight</span>
-                      <input className="input" type="number" min={0.1} step={0.1} style={{ width: 70 }} value={c.weight} onChange={(ev) => setCond(i, { weight: Number(ev.target.value) || 1 })} />
-                      {c.students !== undefined && <Tag color="gray">👥 {c.students}</Tag>}
+                      <input className="input control-number" type="number" min={0.1} step={0.1} value={c.weight} onChange={(ev) => setCond(i, { weight: Number(ev.target.value) || 1 })} />
+                      {c.students !== undefined && <Tag color="gray">{icons.students} {c.students}</Tag>}
                       {(!c.students || e.status === "draft") && form.conditions.length > 1 && (
-                        <button className="icon-btn" title="Remove condition" onClick={() => setForm({ ...form, conditions: form.conditions.filter((_, j) => j !== i) })}>🗑</button>
+                        <button className="icon-btn" title="Remove condition" onClick={() => setForm({ ...form, conditions: form.conditions.filter((_, j) => j !== i) })}>{icons.delete}</button>
                       )}
                     </div>
                     <div style={{ padding: "6px 0 0 30px" }}><OverrideSummary registry={registry} config={c.config} /></div>
@@ -216,7 +217,7 @@ export default function ExperimentPage() {
               <div className="board-add" onClick={() => {
                 setForm({ ...form, conditions: [...form.conditions, { name: `${String.fromCharCode(65 + form.conditions.length)} · Variant`, description: "", weight: 1, config: {} }] });
                 setOpenCond(form.conditions.length);
-              }}>＋ Add condition</div>
+              }}>{icons.add} Add condition</div>
             </>
           )}
 
@@ -226,7 +227,7 @@ export default function ExperimentPage() {
       </div>
       {templates && (
         <Modal onClose={() => setTemplates(false)}>
-          <h2 style={{ marginTop: 0 }}>✨ Start from a template</h2>
+          <h2 style={{ marginTop: 0 }}>{icons.template} Start from a template</h2>
           {TEMPLATES.map((t) => (
             <div key={t.name} className="card" onClick={() => { setForm({ ...form, name: t.name, hypothesis: t.hypothesis, conditions: t.conditions }); setTemplates(false); setOpenCond(null); }}>
               <div className="card-title">{t.name}</div>
@@ -259,26 +260,26 @@ function ParticipantsPanel({ e, onChanged }: { e: Experiment; onChanged: () => v
   const overrides = parts.data.filter((p) => p.has_override).length;
   return (
     <>
-      <Callout icon="👥">
+      <Callout icon={icons.students}>
         {e.strategy === "manual"
           ? "Manual strategy: unassigned students get the baseline configuration until you place them."
           : "Students are placed automatically the first time they open an affected assignment while the experiment runs — or place everyone now."}
       </Callout>
-      {overrides > 0 && <Callout icon="⚠️" color="yellow">{overrides} student{overrides > 1 ? "s have" : " has"} per-student overrides on this assignment, which take precedence over their condition. Consider excluding them from analysis.</Callout>}
+      {overrides > 0 && <Callout icon={icons.warning} color="yellow">{overrides} student{overrides > 1 ? "s have" : " has"} per-student overrides on this assignment, which take precedence over their condition. Consider excluding them from analysis.</Callout>}
       <div className="row" style={{ margin: "8px 0" }}>
         <span className="muted">{unassigned} unassigned</span><span className="spacer" />
         <button className="btn outline" disabled={!unassigned} onClick={() => assignAll(false)}>Place unassigned</button>
         {e.status === "draft" && <button className="btn outline" onClick={() => assignAll(true)}>Re-randomize all</button>}
       </div>
       <table className="table">
-        <thead><tr><th>Aa Student</th><th>Pseudonym</th><th>🧪 Condition</th><th>Placed by</th></tr></thead>
+        <thead><tr><th>{icons.text} Student</th><th>Pseudonym</th><th>{icons.experiments} Condition</th><th>Placed by</th></tr></thead>
         <tbody>
           {parts.data.map((p) => (
             <tr key={p.id}>
               <td style={{ fontWeight: 500 }}>{p.display_name} {p.has_override && <Tag color="yellow">override</Tag>}</td>
               <td className="mono">{p.pseudonym}</td>
               <td>
-                <select className="select" style={{ width: 240 }} value={p.condition_id ?? ""} onChange={(ev) => move(p.id, ev.target.value ? Number(ev.target.value) : null)}>
+                <select className="select control-compact" value={p.condition_id ?? ""} onChange={(ev) => move(p.id, ev.target.value ? Number(ev.target.value) : null)}>
                   <option value="">— unassigned —</option>
                   {e.conditions.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
@@ -298,16 +299,16 @@ function ResultsPanel({ e }: { e: Experiment }) {
   const pct = (v: number | null) => (v === null ? "—" : `${Math.round(v * 100)}%`);
   const num = (v: number | null, d = 2) => (v === null ? "—" : v.toFixed(d));
   const metrics: [string, (x: Result) => string][] = [
-    ["👥 Students", (x) => String(x.students)],
-    ["💬 On-demand requests", (x) => String(x.on_demand_requests)],
-    ["⚡ Real-time pop-ups", (x) => String(x.realtime_popups)],
-    ["🙈 Pop-ups dismissed", (x) => String(x.dismissed)],
-    ["👍 Student helpful rate", (x) => pct(x.helpful_rate)],
-    ["🧑‍🏫 Mean instructor rating (1–5)", (x) => num(x.mean_instructor_rating)],
-    ["🎯 Mean bandit reward", (x) => `${num(x.mean_reward)} (n=${x.final_rewards})`],
-    ["📨 Submissions", (x) => String(x.submissions)],
-    ["📏 Mean words submitted", (x) => num(x.mean_words, 0)],
-    ["🎓 Mean grade", (x) => num(x.mean_grade)],
+    [(icons.students + " Students"), (x) => String(x.students)],
+    [(icons.feedback + " On-demand requests"), (x) => String(x.on_demand_requests)],
+    [(icons.realtime + " Real-time pop-ups"), (x) => String(x.realtime_popups)],
+    [(icons.hidden + " Pop-ups dismissed"), (x) => String(x.dismissed)],
+    [(icons.helpful + " Student helpful rate"), (x) => pct(x.helpful_rate)],
+    [(icons.instructor + " Mean instructor rating (1–5)"), (x) => num(x.mean_instructor_rating)],
+    [(icons.target + " Mean bandit reward"), (x) => `${num(x.mean_reward)} (n=${x.final_rewards})`],
+    [(icons.submissions + " Submissions"), (x) => String(x.submissions)],
+    [(icons.rules + " Mean words submitted"), (x) => num(x.mean_words, 0)],
+    [(icons.course + " Mean grade"), (x) => num(x.mean_grade)],
   ];
   return (
     <>

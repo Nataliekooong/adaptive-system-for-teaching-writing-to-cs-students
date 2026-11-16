@@ -1,3 +1,4 @@
+import { icons } from "../../icons";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ClipboardEvent, type KeyboardEvent } from "react";
 import { useParams } from "react-router-dom";
 import { api, ApiError } from "../../api";
@@ -269,7 +270,7 @@ export default function Workspace() {
     try {
       await api.post(`/api/student/assignments/${id}/submit`, { content: text });
       setConfirm(null);
-      toast("Submitted 🎉");
+      toast(("Submitted " + icons.celebrate));
       reloadList();
       load();
     } catch (e) {
@@ -310,38 +311,38 @@ export default function Workspace() {
   const saveLabel = locked ? "Read-only · submitted"
     : saveState === "saving" ? "Saving…"
     : saveState === "unsaved" ? "Unsaved changes"
-    : saveState === "error" ? "⚠️ Not saved"
+    : saveState === "error" ? (icons.warning + " Not saved")
     : savedAt ? `Saved ${timeAgo(savedAt)}` : "Saved";
 
   return (
     <>
       <Topbar
         onToggleSidebar={toggleSidebar}
-        crumbs={[{ label: "Home", icon: "🏠", to: "/s" }, { label: a.title, icon: "📝" }]}
+        crumbs={[{ label: "Home", icon: icons.home, to: "/s" }, { label: a.title, icon: icons.assignment }]}
         right={
           <div className="ws-toolbar">
             <span className="save-state">{saveLabel}</span>
             {!locked && (
               <>
-                <button className="icon-btn" title="Undo (⌘Z)" disabled={!canUndo} onClick={undo}>↶</button>
-                <button className="icon-btn" title="Redo (⇧⌘Z)" disabled={!canRedo} onClick={redo}>↷</button>
+                <button className="icon-btn" title="Undo (⌘Z)" disabled={!canUndo} onClick={undo}>{icons.undo}</button>
+                <button className="icon-btn" title="Redo (⇧⌘Z)" disabled={!canRedo} onClick={redo}>{icons.redo}</button>
                 <button className="btn" onClick={() => save("manual")} title="⌘S">Save</button>
                 {cfg.version_history.enabled && (
                   <>
                     <button className="btn" onClick={() => setConfirm("restore")}>Revert</button>
-                    <button className="icon-btn" title="Version history" onClick={openVersions}>🕘</button>
+                    <button className="icon-btn" title="Version history" onClick={openVersions}>{icons.history}</button>
                   </>
                 )}
                 {cfg.on_demand_feedback.enabled && (
                   <button className="btn outline" onClick={requestFeedback} disabled={busyFb}>
-                    {busyFb ? "Thinking…" : "✨ Request feedback"}
+                    {busyFb ? "Thinking…" : (icons.template + " Request feedback")}
                   </button>
                 )}
                 <button className="btn primary" onClick={() => { setSubmitProblems([]); setConfirm("submit"); }}>Submit</button>
               </>
             )}
             {showPanel && (
-              <button className="icon-btn" title="Toggle feedback panel" onClick={() => setPanelOpen(!panelOpen)}>💬</button>
+              <button className="icon-btn" title="Toggle feedback panel" onClick={() => setPanelOpen(!panelOpen)}>{icons.feedback}</button>
             )}
           </div>
         }
@@ -349,48 +350,48 @@ export default function Workspace() {
       <div className="ws" style={{ flex: 1, minHeight: 0 }}>
         <div className="ws-main">
           <div className="ws-doc">
-            <PageHeader icon="📝" title={a.title} />
+            <PageHeader icon={icons.assignment} title={a.title} />
             <Props>
-              <Prop icon="📅" label="Due">{fmtDate(a.due_date, true)}</Prop>
-              <Prop icon="◉" label="Status">
+              <Prop icon={icons.date} label="Due">{fmtDate(a.due_date, true)}</Prop>
+              <Prop icon={icons.status} label="Status">
                 <Tag dot color={d.submission?.released ? "green" : d.submission ? "blue" : "yellow"}>
                   {d.submission?.released ? "Graded" : d.submission ? "Submitted" : "In progress"}
                 </Tag>
               </Prop>
-              <Prop icon="🎯" label="Focus areas">
+              <Prop icon={icons.target} label="Focus areas">
                 {a.rubric_areas.map((r) => <Tag key={r} color="purple">{r}</Tag>)}
               </Prop>
-              <Prop icon="#" label="Length">
+              <Prop icon={icons.number} label="Length">
                 <span>{words} words · {paras} paragraph{paras === 1 ? "" : "s"}</span>
                 {minWords > 0 && <span className="faint">(min {minWords} words{minParas ? `, ${minParas} paragraphs` : ""})</span>}
               </Prop>
             </Props>
 
             {d.submission?.released && cfg.grades.enabled && (
-              <Callout icon="🎓" color="green">
+              <Callout icon={icons.course} color="green">
                 <div style={{ fontWeight: 600 }}>Grade: {d.submission.grade}</div>
                 {d.submission.comments && <div className="prewrap" style={{ marginTop: 4 }}>{d.submission.comments}</div>}
               </Callout>
             )}
             {locked && !d.submission?.released && (
-              <Callout icon="📨" color="blue">Submitted {fmtDate(d.submission?.submitted_at, true)}. Your workspace is now read-only.</Callout>
+              <Callout icon={icons.submissions} color="blue">Submitted {fmtDate(d.submission?.submitted_at, true)}. Your workspace is now read-only.</Callout>
             )}
 
-            <ToggleBlock title="📄 Instructions" defaultOpen={!text}>
+            <ToggleBlock title={icons.document + " Instructions"} defaultOpen={!text}>
               {a.description && <p style={{ margin: "4px 0" }}>{a.description}</p>}
               <p className="prewrap" style={{ margin: "4px 0" }}>{a.instructions}</p>
             </ToggleBlock>
             {a.genre_guidance && (
-              <ToggleBlock title="🧭 Genre guidance">
+              <ToggleBlock title={icons.guide + " Genre guidance"}>
                 <p className="prewrap" style={{ margin: "4px 0" }}>{a.genre_guidance}</p>
               </ToggleBlock>
             )}
 
             {cfg.get_started.enabled && !locked && (
               getStarted !== null ? (
-                <Callout icon="🚀" color="yellow">
+                <Callout icon={icons.getStarted} color="yellow">
                   <div className="row"><b>Get started</b><span className="spacer" />
-                    <button className="icon-btn" onClick={() => setGetStarted(null)}>✕</button></div>
+                    <button className="icon-btn" onClick={() => setGetStarted(null)}>{icons.close}</button></div>
                   <div className="prewrap" style={{ marginTop: 4 }}>{getStarted}</div>
                   <div className="faint small" style={{ marginTop: 8 }}>This is a scaffold — write each part in your own words.</div>
                 </Callout>
@@ -399,7 +400,7 @@ export default function Workspace() {
                   <button
                     className="btn outline" disabled={!!text.trim()} onClick={openGetStarted}
                     title={text.trim() ? "Available while your draft is empty" : "See an outline and guiding questions"}
-                  >🚀 Get started</button>
+                  >{icons.getStarted} Get started</button>
                 </div>
               )
             )}
@@ -434,13 +435,13 @@ export default function Workspace() {
         {showPanel && panelOpen && (
           <aside className="ws-panel">
             <div className="ws-panel-head">
-              <span>{presentation === "character" ? "🦉" : "💬"}</span> Feedback
+              <span>{presentation === "character" ? icons.character : icons.feedback}</span> Feedback
               <span className="spacer" />
               <span className="faint small" style={{ fontWeight: 400 }}>{feedback.length} item{feedback.length === 1 ? "" : "s"}</span>
-              <button className="icon-btn" onClick={() => setPanelOpen(false)}>✕</button>
+              <button className="icon-btn" onClick={() => setPanelOpen(false)}>{icons.close}</button>
             </div>
             <div className="ws-panel-body">
-              {busyFb && <div className="fb-card faint">✨ Reading your draft…</div>}
+              {busyFb && <div className="fb-card faint">{icons.template} Reading your draft…</div>}
               {presentation === "character"
                 ? <CharacterPanel items={feedback} canRate={canRate} onRate={rate} />
                 : <ChatPanel items={feedback} canRate={canRate} onRate={rate} />}
@@ -458,7 +459,7 @@ export default function Workspace() {
         <Modal onClose={() => setConfirm(null)}>
           <h2 style={{ marginTop: 0 }}>Revert to last saved version?</h2>
           <p className="muted">Unsaved changes since your last manual save will be replaced. (They stay in version history.)</p>
-          <div className="row"><span className="spacer" />
+          <div className="form-actions">
             <button className="btn" onClick={() => setConfirm(null)}>Cancel</button>
             <button className="btn primary" onClick={() => restore()}>Revert</button>
           </div>
@@ -469,12 +470,12 @@ export default function Workspace() {
         <Modal onClose={() => setConfirm(null)}>
           <h2 style={{ marginTop: 0 }}>Submit final draft?</h2>
           <p className="muted">After submitting, your draft becomes read-only and can't be submitted again.</p>
-          {minWords > 0 && <div>{words >= minWords ? "✅" : "❌"} At least {minWords} words <span className="faint">({words})</span></div>}
-          {minParas > 0 && <div>{paras >= minParas ? "✅" : "❌"} At least {minParas} paragraphs <span className="faint">({paras})</span></div>}
+          {minWords > 0 && <div>{words >= minWords ? icons.complete : icons.error} At least {minWords} words <span className="faint">({words})</span></div>}
+          {minParas > 0 && <div>{paras >= minParas ? icons.complete : icons.error} At least {minParas} paragraphs <span className="faint">({paras})</span></div>}
           {submitProblems.length > 0 && (
-            <Callout icon="⚠️" color="red">{submitProblems.map((p) => <div key={p}>{p}</div>)}</Callout>
+            <Callout icon={icons.warning} color="red">{submitProblems.map((p) => <div key={p}>{p}</div>)}</Callout>
           )}
-          <div className="row" style={{ marginTop: 16 }}><span className="spacer" />
+          <div className="form-actions" style={{ marginTop: 16 }}>
             <button className="btn" onClick={() => setConfirm(null)}>Keep writing</button>
             <button className="btn primary" onClick={submit}>Submit</button>
           </div>
@@ -483,7 +484,7 @@ export default function Workspace() {
 
       {versions && (
         <Modal onClose={() => setVersions(null)}>
-          <h2 style={{ marginTop: 0 }}>🕘 Version history</h2>
+          <h2 style={{ marginTop: 0 }}>{icons.history} Version history</h2>
           {versions.length === 0 && <div className="empty">No saved versions yet.</div>}
           <table className="table">
             <tbody>

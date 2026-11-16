@@ -1,3 +1,4 @@
+import { icons } from "../../icons";
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api } from "../../api";
@@ -40,17 +41,17 @@ export default function CoursePage() {
     <>
       <Topbar
         onToggleSidebar={toggleSidebar}
-        crumbs={[{ label: c?.code ?? "…", icon: "🎓", to: `/i/courses/${courseId}` }, { label: current.label, icon: current.icon }]}
+        crumbs={[{ label: c?.code ?? "…", icon: icons.course, to: `/i/courses/${courseId}` }, { label: current.label, icon: current.icon }]}
         right={c && <button className="btn danger" onClick={() => setConfirming(true)}>Delete</button>}
       />
       <div className="content">
         {!c ? <Loading error={course.error} /> : (
           <div className="page wide">
-            <PageHeader icon="🎓" title={c.title} />
+            <PageHeader icon={icons.course} title={c.title} />
             <Props>
-              <Prop icon="#" label="Code">{c.code}</Prop>
-              <Prop icon="👥" label="Students">{summary?.students ?? "—"}</Prop>
-              <Prop icon="🎯" label="Rubric areas">{c.rubric_areas.map((r) => <Tag key={r} color="purple">{r}</Tag>)}</Prop>
+              <Prop icon={icons.number} label="Code">{c.code}</Prop>
+              <Prop icon={icons.students} label="Students">{summary?.students ?? "—"}</Prop>
+              <Prop icon={icons.target} label="Rubric areas">{c.rubric_areas.map((r) => <Tag key={r} color="purple">{r}</Tag>)}</Prop>
             </Props>
             <Views
               tabs={COURSE_TABS}
@@ -71,8 +72,8 @@ export default function CoursePage() {
         <Modal onClose={() => setConfirming(false)}>
           <h2 style={{ marginTop: 0 }}>Delete {c.code}?</h2>
           <p className="muted">This removes the course and its assignments, enrollments, experiments and drafts. Research logs stay.</p>
-          <div className="row">
-            <span className="spacer" />
+          <div className="form-actions">
+
             <button className="btn" onClick={() => setConfirming(false)}>Cancel</button>
             <button className="btn danger" onClick={remove}>Delete</button>
           </div>

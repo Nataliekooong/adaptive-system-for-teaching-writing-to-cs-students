@@ -1,3 +1,4 @@
+import { icons } from "../../icons";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth";
 import { fmtDate } from "../../config";
@@ -11,10 +12,10 @@ export default function StudentHome() {
   const col = (s: StudentAssignment["status"]) => assignments.filter((a) => a.status === s);
   return (
     <>
-      <Topbar onToggleSidebar={toggleSidebar} crumbs={[{ label: "Home", icon: "🏠" }]} />
+      <Topbar onToggleSidebar={toggleSidebar} crumbs={[{ label: "Home", icon: icons.home }]} />
       <div className="content">
         <div className="page wide">
-          <PageHeader icon="📚" title={`Hi, ${me!.display_name.split(" ")[0]}`} sub="Your writing assignments" />
+          <PageHeader icon={icons.library} title={`Hi, ${me!.display_name.split(" ")[0]}`} sub="Your writing assignments" />
           <Board
             columns={[
               { key: "in_progress", label: "In progress", color: "yellow", items: col("in_progress") },

@@ -85,7 +85,7 @@ The system exists to run A/B tests, so **every new feature must be a switchable 
    A disabled module must make its endpoint refuse (403) or no-op, not crash.
 3. Gate the frontend UI on the `config` returned by `GET /api/student/assignments/{id}`.
 4. The instructor UI picks the module up automatically. Only add a `MODULE_ICONS` entry in
-   `components/ModuleConfigEditor.tsx`.
+   `src/frontend/src/icons.ts`.
 5. Add tests in `src/backend/tests/test_api.py`: on, off, and overridden by an experiment condition.
 
 Do not add per-feature config tables or columns. Overrides live in the JSON `config` / `override_config` columns
@@ -115,7 +115,9 @@ and are validated by `modules.validate_overrides`.
   Store naive UTC datetimes (`models.now()`); serialize with `serializers.iso()`.
 - Frontend: function components + hooks, `api.get/post/...` from `src/api.ts`, data loading via `useLoad`,
   UI primitives from `src/ui.tsx` (`Tag`, `Board`, `Views`, `Props`, `Callout`, `Modal`, `useToast`).
-  Keep the Notion look: no new UI libraries, reuse the CSS tokens in `styles.css`.
+  Use the white default theme: no new UI libraries; colors and shared sizes live in `theme.css`, component rules
+  in `styles.css`, and icons in `icons.ts`. Use `Field` and `RatingScale` for repeated form patterns.
+  See [frontend UI conventions](docs/frontend-design.md).
 - Match the surrounding comment density; reference SRS IDs instead of long explanations.
 - `npm run typecheck` and `pytest` must both pass before handing work back.
 

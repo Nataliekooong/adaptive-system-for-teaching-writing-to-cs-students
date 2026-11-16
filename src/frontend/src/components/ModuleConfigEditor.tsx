@@ -2,16 +2,7 @@ import { useState } from "react";
 import type { Config, ConfigOverrides, ModuleSchema, Registry, SettingSchema } from "../types";
 import { mergeConfig } from "../config";
 import { Seg, Switch, Tag } from "../ui";
-
-const MODULE_ICONS: Record<string, string> = {
-  on_demand_feedback: "💬", realtime_feedback: "⚡", feedback_presentation: "🎭", student_rating: "👍",
-  instructor_review: "🧑‍🏫", reward: "🎯", learner_model: "🧠", questionnaire: "📋", get_started: "🚀",
-  version_history: "🕘", paste_control: "📋", submission_rules: "📏", grades: "🎓",
-};
-
-export function moduleIcon(key: string) {
-  return MODULE_ICONS[key] ?? "🧩";
-}
+import { icons, moduleIcon } from "../icons";
 
 /**
  * Schema-driven editor for ONE configuration layer. `value` holds only this layer's overrides;
@@ -62,11 +53,11 @@ export function ModuleConfigEditor({
             return (
               <div className="mod" key={m.key}>
                 <div className="mod-head">
-                  <span
-                    className={`caret ${isOpen ? "open" : ""}`} style={{ cursor: "pointer" }}
+                  <button type="button" aria-label={`Toggle ${m.label} settings`} aria-expanded={isOpen}
+                    className={`icon-btn sm caret ${isOpen ? "open" : ""}`}
                     onClick={() => setOpen({ ...open, [m.key]: !isOpen })}
-                  >▶</span>
-                  <span style={{ fontSize: 16 }}>{moduleIcon(m.key)}</span>
+                  >{icons.expand}</button>
+                  <span className="module-icon" aria-hidden="true">{moduleIcon(m.key)}</span>
                   <div style={{ flex: 1, minWidth: 0, cursor: "pointer" }} onClick={() => setOpen({ ...open, [m.key]: !isOpen })}>
                     <div className="row" style={{ gap: 6 }}>
                       <span className="mod-title">{m.label}</span>
@@ -141,10 +132,9 @@ function SettingRow({ s, value, overridden, inheritedValue, inheritLabel, onChan
           const on = cur.includes(o);
           return (
             <button
-              key={o} type="button" disabled={readOnly} className="btn sm outline"
-              style={on ? { background: "var(--blue-bg)", color: "var(--blue)" } : undefined}
+              key={o} type="button" disabled={readOnly} className={`btn sm outline ${on ? "selected" : ""}`} aria-pressed={on}
               onClick={() => onChange(on ? cur.filter((x) => x !== o) : [...cur, o])}
-            >{on ? "✓ " : ""}{o.replace(/_/g, " ")}</button>
+            >{on ? (icons.check + " ") : ""}{o.replace(/_/g, " ")}</button>
           );
         })}
         {cur.length === 0 && <span className="faint small">none selected = all enabled styles</span>}
@@ -165,13 +155,13 @@ function SettingRow({ s, value, overridden, inheritedValue, inheritLabel, onChan
     <div className="set-row" title={s.help}>
       <div className="set-label">
         {s.label}
-        {s.help && <div className="faint" style={{ fontSize: 11.5, lineHeight: 1.3 }}>{s.help}</div>}
+        {s.help && <div className="setting-help">{s.help}</div>}
       </div>
       <div className="set-ctrl">
         {ctrl}
         {overridden ? (
           <>
-            <span className="prov here">● set here</span>
+            <span className="prov here">{icons.bullet} set here</span>
             {!readOnly && <button className="reset" onClick={onReset}>reset to {fmt(inheritedValue)}</button>}
           </>
         ) : (
