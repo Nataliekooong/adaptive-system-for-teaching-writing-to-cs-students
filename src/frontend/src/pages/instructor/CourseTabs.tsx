@@ -1,10 +1,11 @@
+import { icons, moduleIcon } from "../../icons";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api, getToken } from "../../api";
 import { countOverrides, fmtDate } from "../../config";
-import { ModuleConfigEditor, OverrideSummary, moduleIcon } from "../../components/ModuleConfigEditor";
+import { ModuleConfigEditor, OverrideSummary } from "../../components/ModuleConfigEditor";
 import type { Assignment, ConfigOverrides, Course, Experiment, UserRef } from "../../types";
-import { Board, Callout, Loading, Modal, STATUS_COLORS, Switch, Tag, useLoad, useToast } from "../../ui";
+import { Field, Board, Callout, Loading, Modal, STATUS_COLORS, Switch, Tag, useLoad, useToast } from "../../ui";
 import { useInstructor } from "./InstructorLayout";
 
 type AssignmentRow = Assignment & { students: number; submissions: number; overridden_modules: string[] };
@@ -36,25 +37,25 @@ export function AssignmentsTab({ course }: { course: Course }) {
   if (!rows.data) return <Loading error={rows.error} />;
   return (
     <>
-      <div className="row" style={{ marginBottom: 8 }}>
-        <span className="spacer" />
+      <div className="form-actions" style={{ marginBottom: 8 }}>
+
         <button className="btn primary" onClick={() => setCreating(true)}>New</button>
       </div>
       <table className="table">
         <thead>
           <tr>
-            <th><span className="th-ico">Aa</span>Title</th>
-            <th><span className="th-ico">📅</span>Due</th>
-            <th><span className="th-ico">🎯</span>Focus areas</th>
-            <th><span className="th-ico">🧩</span>Module overrides</th>
-            <th><span className="th-ico">👥</span>Students</th>
-            <th><span className="th-ico">📨</span>Submitted</th>
+            <th><span className="th-ico">{icons.text}</span>Title</th>
+            <th><span className="th-ico">{icons.date}</span>Due</th>
+            <th><span className="th-ico">{icons.target}</span>Focus areas</th>
+            <th><span className="th-ico">{icons.modules}</span>Module overrides</th>
+            <th><span className="th-ico">{icons.students}</span>Students</th>
+            <th><span className="th-ico">{icons.submissions}</span>Submitted</th>
           </tr>
         </thead>
         <tbody>
           {rows.data.map((a) => (
             <tr key={a.id} className="clickable" onClick={() => nav(`/i/assignments/${a.id}`)}>
-              <td style={{ fontWeight: 500 }}>📝 {a.title} {!a.published && <Tag color="gray">hidden</Tag>}</td>
+              <td style={{ fontWeight: 500 }}>{icons.assignment} {a.title} {!a.published && <Tag color="gray">hidden</Tag>}</td>
               <td>{fmtDate(a.due_date)}</td>
               <td><div className="row wrap" style={{ gap: 4 }}>{a.rubric_areas.map((r) => <Tag key={r} color="purple">{r}</Tag>)}</div></td>
               <td>{a.overridden_modules.length ? a.overridden_modules.map((m) => <span key={m} title={m} style={{ marginRight: 4 }}>{moduleIcon(m)}</span>) : <span className="faint">—</span>}</td>
@@ -68,11 +69,11 @@ export function AssignmentsTab({ course }: { course: Course }) {
       {creating && (
         <Modal onClose={() => setCreating(false)}>
           <h2 style={{ marginTop: 0 }}>New assignment</h2>
-          <div className="field"><label>Title</label><input className="input" autoFocus value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} /></div>
-          <div className="field"><label>Description</label><input className="input" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></div>
-          <div className="field"><label>Due date</label><input className="input" type="datetime-local" value={form.due_date} onChange={(e) => setForm({ ...form, due_date: e.target.value })} /></div>
+          <Field label="Title"><input className="input" autoFocus value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} /></Field>
+          <Field label="Description"><input className="input" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></Field>
+          <Field label="Due date"><input className="input" type="datetime-local" value={form.due_date} onChange={(e) => setForm({ ...form, due_date: e.target.value })} /></Field>
           <div className="faint small" style={{ marginBottom: 12 }}>All enrolled students are assigned. You can configure modules and students next.</div>
-          <div className="row"><span className="spacer" /><button className="btn" onClick={() => setCreating(false)}>Cancel</button>
+          <div className="form-actions"><button className="btn" onClick={() => setCreating(false)}>Cancel</button>
             <button className="btn primary" disabled={!form.title} onClick={create}>Create</button></div>
         </Modal>
       )}
@@ -106,11 +107,11 @@ export function ExperimentsTab({ course }: { course: Course }) {
   const aTitle = (id: number | null) => (id ? assignments.data?.find((a) => a.id === id)?.title ?? `#${id}` : "Whole course");
   return (
     <>
-      <Callout icon="🧪">
+      <Callout icon={icons.experiments}>
         An experiment splits students into <b>conditions</b>. Each condition is a set of module overrides layered on top of
         the course and assignment settings — e.g. turn real-time feedback on for B only, or change its presentation.
       </Callout>
-      <div className="row" style={{ margin: "8px 0" }}><span className="spacer" />
+      <div className="form-actions" style={{ margin: "8px 0" }}>
         <button className="btn primary" onClick={create}>New</button></div>
       <Board
         columns={[
@@ -123,13 +124,13 @@ export function ExperimentsTab({ course }: { course: Course }) {
         addLabel="New experiment"
         renderCard={(e) => (
           <div key={e.id} className="card" onClick={() => nav(`/i/experiments/${e.id}`)}>
-            <div className="card-title">🧪 {e.name}</div>
+            <div className="card-title">{icons.experiments} {e.name}</div>
             <div className="card-meta" style={{ marginBottom: 6 }}>
               <Tag color="gray">{aTitle(e.assignment_id)}</Tag>
               <Tag color="gray">{e.strategy}</Tag>
             </div>
             {e.conditions.map((c) => (
-              <div key={c.id} style={{ fontSize: 12.5, marginTop: 4 }}>
+              <div key={c.id} className="small" style={{ marginTop: 4 }}>
                 <span style={{ fontWeight: 500 }}>{c.name}</span> <span className="faint">· {c.students ?? 0} students</span>
                 <div style={{ marginTop: 2 }}><OverrideSummary registry={registry} config={c.config} /></div>
               </div>
@@ -159,11 +160,11 @@ export function ModulesTab({ course, onSaved }: { course: Course; onSaved: () =>
   };
   return (
     <>
-      <Callout icon="🧩" color="blue">
+      <Callout icon={icons.modules} color="blue">
         <b>Course defaults.</b> These apply to every assignment unless an assignment, an experiment condition or a
-        per-student override changes them. Layer order: system → course → assignment → condition → student.
+        per-student override changes them. Layer order: system {icons.forward} course {icons.forward} assignment {icons.forward} condition {icons.forward} student.
       </Callout>
-      <div className="row" style={{ position: "sticky", top: 0, background: "#fff", padding: "8px 0", zIndex: 2 }}>
+      <div className="row sticky-actions">
         <span className="muted">{countOverrides(value)} change{countOverrides(value) === 1 ? "" : "s"} from system defaults</span>
         <span className="spacer" />
         {dirty && <button className="btn" onClick={() => setValue(course.config)}>Discard</button>}
@@ -209,17 +210,17 @@ export function StudentsTab({ course }: { course: Course }) {
   const maxMentions = Math.max(1, ...(struggles.data ?? []).map((s) => s.mentions));
   return (
     <>
-      <div className="row" style={{ marginBottom: 8 }}><span className="spacer" />
+      <div className="form-actions" style={{ marginBottom: 8 }}>
         <button className="btn outline" onClick={openEnroll}>Manage enrollment</button></div>
       <table className="table">
-        <thead><tr><th>Aa Name</th><th>MacID</th><th>Pseudonym</th><th>Questionnaire</th><th>🧠 Avg mastery (BKT)</th></tr></thead>
+        <thead><tr><th>{icons.text} Name</th><th>MacID</th><th>Pseudonym</th><th>Questionnaire</th><th>{icons.learner} Avg mastery (BKT)</th></tr></thead>
         <tbody>
           {rows.data.map((s) => {
             const vals = Object.values(s.mastery);
             const avg = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
             return (
               <tr key={s.id} className="clickable" onClick={() => nav(`/i/courses/${course.id}/students/${s.id}`)}>
-                <td style={{ fontWeight: 500 }}>🧑‍🎓 {s.display_name}</td>
+                <td style={{ fontWeight: 500 }}>{icons.student} {s.display_name}</td>
                 <td>{s.username}</td>
                 <td className="mono">{s.pseudonym}</td>
                 <td>{s.questionnaire_done ? <Tag color="green">Done</Tag> : <Tag color="gray">Not yet</Tag>}</td>
@@ -252,7 +253,7 @@ export function StudentsTab({ course }: { course: Course }) {
               {u.display_name} <span className="faint">{u.username}</span>
             </label>
           ))}
-          <div className="row" style={{ marginTop: 12 }}><span className="spacer" /><button className="btn" onClick={() => setEnrolling(null)}>Cancel</button>
+          <div className="form-actions" style={{ marginTop: 12 }}><button className="btn" onClick={() => setEnrolling(null)}>Cancel</button>
             <button className="btn primary" onClick={saveEnroll}>Save</button></div>
         </Modal>
       )}
@@ -302,11 +303,11 @@ export function LibraryTab({ course }: { course: Course }) {
 
   return (
     <>
-      <h2 className="h" style={{ marginTop: 4 }}>🎨 Feedback styles <span className="faint small" style={{ fontWeight: 400 }}>bandit arms</span></h2>
+      <h2 className="h" style={{ marginTop: 4 }}>{icons.styles} Feedback styles <span className="faint small" style={{ fontWeight: 400 }}>bandit arms</span></h2>
       <div className="muted small" style={{ marginBottom: 8 }}>Disabled styles are never selected by the bandit, random or fixed policies.</div>
       {!styles.data ? <Loading error={styles.error} /> : (
         <table className="table">
-          <thead><tr><th>On</th><th>Aa Style</th><th>Key</th><th>Description</th><th>Prompt template</th><th /></tr></thead>
+          <thead><tr><th>On</th><th>{icons.text} Style</th><th>Key</th><th>Description</th><th>Prompt template</th><th /></tr></thead>
           <tbody>
             {styles.data.map((s) => (
               <tr key={s.key}>
@@ -321,13 +322,13 @@ export function LibraryTab({ course }: { course: Course }) {
           </tbody>
         </table>
       )}
-      <div className="board-add" style={{ marginTop: 4 }} onClick={() => setEditStyle({ key: "", name: "", description: "", prompt_template: "", enabled: true })}>＋ New style</div>
+      <div className="board-add" style={{ marginTop: 4 }} onClick={() => setEditStyle({ key: "", name: "", description: "", prompt_template: "", enabled: true })}>{icons.add} New style</div>
 
-      <h2 className="h">📌 Instructor-approved prompts <span className="faint small" style={{ fontWeight: 400 }}>fixed prompts</span></h2>
+      <h2 className="h">{icons.prompts} Instructor-approved prompts <span className="faint small" style={{ fontWeight: 400 }}>fixed prompts</span></h2>
       <div className="muted small" style={{ marginBottom: 8 }}>Used when a feedback venue's source is set to <i>fixed prompts</i> (e.g. the “Fixed prompts only” study condition).</div>
       {!prompts.data ? <Loading error={prompts.error} /> : (
         <table className="table">
-          <thead><tr><th>On</th><th>⚡ Trigger</th><th>🎯 Rubric area</th><th>Aa Prompt</th><th /></tr></thead>
+          <thead><tr><th>On</th><th>{icons.realtime} Trigger</th><th>{icons.target} Rubric area</th><th>{icons.text} Prompt</th><th /></tr></thead>
           <tbody>
             {prompts.data.map((p) => (
               <tr key={p.id}>
@@ -344,16 +345,16 @@ export function LibraryTab({ course }: { course: Course }) {
           </tbody>
         </table>
       )}
-      <div className="board-add" style={{ marginTop: 4 }} onClick={() => setEditPrompt({ trigger: "any", text: "", rubric_area: "", enabled: true })}>＋ New prompt</div>
+      <div className="board-add" style={{ marginTop: 4 }} onClick={() => setEditPrompt({ trigger: "any", text: "", rubric_area: "", enabled: true })}>{icons.add} New prompt</div>
 
       {editStyle && (
         <Modal onClose={() => setEditStyle(null)}>
           <h2 style={{ marginTop: 0 }}>{editStyle.name || "New style"}</h2>
-          <div className="field"><label>Key (lowercase, used in logs)</label><input className="input mono" value={editStyle.key} onChange={(e) => setEditStyle({ ...editStyle, key: e.target.value })} /></div>
-          <div className="field"><label>Name</label><input className="input" value={editStyle.name} onChange={(e) => setEditStyle({ ...editStyle, name: e.target.value })} /></div>
-          <div className="field"><label>Description</label><input className="input" value={editStyle.description} onChange={(e) => setEditStyle({ ...editStyle, description: e.target.value })} /></div>
-          <div className="field"><label>Prompt template (sent to the SLM)</label><textarea className="textarea" value={editStyle.prompt_template} onChange={(e) => setEditStyle({ ...editStyle, prompt_template: e.target.value })} /></div>
-          <div className="row"><span className="spacer" /><button className="btn" onClick={() => setEditStyle(null)}>Cancel</button>
+          <Field label="Key (lowercase, used in logs)"><input className="input mono" value={editStyle.key} onChange={(e) => setEditStyle({ ...editStyle, key: e.target.value })} /></Field>
+          <Field label="Name"><input className="input" value={editStyle.name} onChange={(e) => setEditStyle({ ...editStyle, name: e.target.value })} /></Field>
+          <Field label="Description"><input className="input" value={editStyle.description} onChange={(e) => setEditStyle({ ...editStyle, description: e.target.value })} /></Field>
+          <Field label="Prompt template (sent to the SLM)"><textarea className="textarea" value={editStyle.prompt_template} onChange={(e) => setEditStyle({ ...editStyle, prompt_template: e.target.value })} /></Field>
+          <div className="form-actions"><button className="btn" onClick={() => setEditStyle(null)}>Cancel</button>
             <button className="btn primary" onClick={() => saveStyle(editStyle)}>Save</button></div>
         </Modal>
       )}
@@ -361,18 +362,18 @@ export function LibraryTab({ course }: { course: Course }) {
         <Modal onClose={() => setEditPrompt(null)}>
           <h2 style={{ marginTop: 0 }}>{editPrompt.id ? "Edit prompt" : "New prompt"}</h2>
           <div className="grid2">
-            <div className="field"><label>Trigger</label>
+            <Field label="Trigger">
               <select className="select" value={editPrompt.trigger} onChange={(e) => setEditPrompt({ ...editPrompt, trigger: e.target.value })}>
                 {["any", "on_demand", "idle", "sentence_end", "deletion"].map((t) => <option key={t} value={t}>{t.replace("_", " ")}</option>)}
-              </select></div>
-            <div className="field"><label>Rubric area</label>
+              </select></Field>
+            <Field label="Rubric area">
               <select className="select" value={editPrompt.rubric_area} onChange={(e) => setEditPrompt({ ...editPrompt, rubric_area: e.target.value })}>
                 <option value="">Any</option>
                 {course.rubric_areas.map((r) => <option key={r}>{r}</option>)}
-              </select></div>
+              </select></Field>
           </div>
-          <div className="field"><label>Prompt shown to students</label><textarea className="textarea" value={editPrompt.text} onChange={(e) => setEditPrompt({ ...editPrompt, text: e.target.value })} /></div>
-          <div className="row"><span className="spacer" /><button className="btn" onClick={() => setEditPrompt(null)}>Cancel</button>
+          <Field label="Prompt shown to students"><textarea className="textarea" value={editPrompt.text} onChange={(e) => setEditPrompt({ ...editPrompt, text: e.target.value })} /></Field>
+          <div className="form-actions"><button className="btn" onClick={() => setEditPrompt(null)}>Cancel</button>
             <button className="btn primary" disabled={!editPrompt.text} onClick={savePrompt}>Save</button></div>
         </Modal>
       )}
@@ -416,12 +417,12 @@ export function ResearchTab({ course }: { course: Course }) {
   const contexts = [...new Set(st.data.arms.map((a) => a.context_key))];
   return (
     <>
-      <div className="row"><h2 className="h" style={{ margin: 0 }}>🎰 Feedback-style bandit</h2><span className="spacer" />
-        <button className="btn outline" onClick={() => download("csv")}>⬇ Events CSV</button>
-        <button className="btn outline" onClick={() => download("json")}>⬇ JSON</button>
+      <div className="row"><h2 className="h" style={{ margin: 0 }}>{icons.bandit} Feedback-style bandit</h2><span className="spacer" />
+        <button className="btn outline" onClick={() => download("csv")}>{icons.download} Events CSV</button>
+        <button className="btn outline" onClick={() => download("json")}>{icons.download} JSON</button>
       </div>
       <div className="muted small" style={{ margin: "4px 0 12px" }}>Thompson Sampling posteriors per learner-level context. Rewards are folded in on a schedule or now.</div>
-      <Callout icon="⏱️" color={st.data.pending_update.length ? "yellow" : undefined}>
+      <Callout icon={icons.timer} color={st.data.pending_update.length ? "yellow" : undefined}>
         <div className="row">
           <div style={{ flex: 1 }}>
             <b>Scheduled update preview.</b>{" "}
@@ -448,9 +449,9 @@ export function ResearchTab({ course }: { course: Course }) {
         ))}
       </div>
 
-      <h2 className="h">🧾 Decision log</h2>
+      <h2 className="h">{icons.receipt} Decision log</h2>
       <table className="table">
-        <thead><tr><th>#</th><th>Student</th><th>Policy</th><th>Style</th><th>Context</th><th>P(select)</th><th>Student</th><th>Instructor</th><th>Reward</th><th>Status</th></tr></thead>
+        <thead><tr><th>{icons.number}</th><th>Student</th><th>Policy</th><th>Style</th><th>Context</th><th>P(select)</th><th>Student</th><th>Instructor</th><th>Reward</th><th>Status</th></tr></thead>
         <tbody>
           {st.data.decisions.map((d) => (
             <tr key={d.id}>
@@ -463,13 +464,13 @@ export function ResearchTab({ course }: { course: Course }) {
               <td>{d.student_score ?? "—"}</td>
               <td>{d.instructor_score?.toFixed(2) ?? "—"}</td>
               <td title={d.formula}>{d.reward?.toFixed(2) ?? "—"}</td>
-              <td><Tag color={STATUS_COLORS[d.reward_status]}>{d.reward_status}{d.applied ? " ✓" : ""}</Tag></td>
+              <td><Tag color={STATUS_COLORS[d.reward_status]}>{d.reward_status}{d.applied ? (" " + icons.check) : ""}</Tag></td>
             </tr>
           ))}
         </tbody>
       </table>
 
-      <h2 className="h">📜 Recent events</h2>
+      <h2 className="h">{icons.log} Recent events</h2>
       <div className="muted small" style={{ marginBottom: 6 }}>Append-only, pseudonymized, linked to assignment and study condition. Raw keystrokes are never logged.</div>
       <table className="table">
         <tbody>

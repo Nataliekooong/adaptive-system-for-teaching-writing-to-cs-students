@@ -1,3 +1,4 @@
+import { icons } from "../../icons";
 import { useNavigate, useParams } from "react-router-dom";
 import { api } from "../../api";
 import { fmtDate } from "../../config";
@@ -27,25 +28,25 @@ export default function StudentProfilePage() {
   return (
     <>
       <Topbar onToggleSidebar={toggleSidebar} crumbs={[
-        { label: course?.code ?? "Course", icon: "🎓", to: `/i/courses/${cid}` },
-        { label: "Students", icon: "👥", to: `/i/courses/${cid}/students` },
+        { label: course?.code ?? "Course", icon: icons.course, to: `/i/courses/${cid}` },
+        { label: "Students", icon: icons.students, to: `/i/courses/${cid}/students` },
         { label: d.student.display_name },
       ]} />
       <div className="content">
         <div className="page">
-          <PageHeader icon="🧑‍🎓" title={d.student.display_name} />
+          <PageHeader icon={icons.student} title={d.student.display_name} />
           <Props>
-            <Prop icon="🆔" label="MacID">{d.student.username}</Prop>
-            <Prop icon="🕶" label="Pseudonym"><span className="mono">{d.student.pseudonym}</span></Prop>
-            <Prop icon="📋" label="Questionnaire">
+            <Prop icon={icons.identity} label="MacID">{d.student.username}</Prop>
+            <Prop icon={icons.anonymous} label="Pseudonym"><span className="mono">{d.student.pseudonym}</span></Prop>
+            <Prop icon={icons.questionnaire} label="Questionnaire">
               {d.questionnaire ? Object.entries(d.questionnaire).filter(([, v]) => v !== "").map(([k, v]) => <Tag key={k} color="gray">{k.replace(/_/g, " ")}: {String(v)}</Tag>) : <span className="faint">Not completed</span>}
             </Prop>
-            <Prop icon="💬" label="Feedback received">{d.feedback_count}</Prop>
+            <Prop icon={icons.feedback} label="Feedback received">{d.feedback_count}</Prop>
           </Props>
 
-          <h2 className="h">📝 Assignments & grades</h2>
+          <h2 className="h">{icons.assignment} Assignments & grades</h2>
           <table className="table">
-            <thead><tr><th>Aa Assignment</th><th>Due</th><th>Status</th><th>Grade</th><th>🧪 Condition</th></tr></thead>
+            <thead><tr><th>{icons.text} Assignment</th><th>Due</th><th>Status</th><th>Grade</th><th>{icons.experiments} Condition</th></tr></thead>
             <tbody>
               {d.assignments.map((a) => (
                 <tr key={a.assignment_id} className="clickable" onClick={() => nav(`/i/assignments/${a.assignment_id}/students/${d.student.id}`)}>
@@ -61,7 +62,7 @@ export default function StudentProfilePage() {
 
           <div className="grid2" style={{ marginTop: 8 }}>
             <div>
-              <h2 className="h">🔥 Common struggle areas</h2>
+              <h2 className="h">{icons.struggle} Common struggle areas</h2>
               {d.struggles.length === 0 && <div className="faint">No feedback yet.</div>}
               {d.struggles.map(([area, n]) => (
                 <div key={area} style={{ marginBottom: 8 }}>
@@ -71,7 +72,7 @@ export default function StudentProfilePage() {
               ))}
             </div>
             <div>
-              <h2 className="h">🧠 Learner model (BKT)</h2>
+              <h2 className="h">{icons.learner} Learner model (BKT)</h2>
               {Object.keys(d.mastery).length === 0 && <div className="faint">No estimates yet.</div>}
               {Object.entries(d.mastery).map(([area, v]) => (
                 <div key={area} style={{ marginBottom: 8 }}>

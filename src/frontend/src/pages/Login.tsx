@@ -1,13 +1,15 @@
+import { icons } from "../icons";
+import { Field } from "../ui";
 import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth";
 
 // Seeded demo accounts (src/backend/app/seed.py). Replaced by McMaster SSO later.
 const DEMO = [
-  { u: "drlee", label: "Dr. Lee", role: "Instructor", icon: "🧑‍🏫" },
-  { u: "priya", label: "Priya", role: "Student", icon: "🧑‍🎓" },
-  { u: "marcus", label: "Marcus", role: "Student", icon: "🧑‍💻" },
-  { u: "alex", label: "Alex", role: "Student", icon: "🧑‍🎓" },
+  { u: "drlee", label: "Dr. Lee", role: "Instructor", icon: icons.instructor },
+  { u: "priya", label: "Priya", role: "Student", icon: icons.student },
+  { u: "marcus", label: "Marcus", role: "Student", icon: icons.developer },
+  { u: "alex", label: "Alex", role: "Student", icon: icons.student },
 ];
 
 export default function Login() {
@@ -39,20 +41,18 @@ export default function Login() {
   return (
     <div className="login-wrap">
       <div className="login-box">
-        <div style={{ fontSize: 44, marginBottom: 8 }}>✍️</div>
-        <h1 style={{ fontSize: 26, fontWeight: 700, margin: "0 0 4px" }}>Adaptive Writing Tutor</h1>
+        <div className="dialog-icon" aria-hidden="true">{icons.writing}</div>
+        <h1 className="login-title">Adaptive Writing Tutor</h1>
         <div className="muted" style={{ marginBottom: 24 }}>Sign in with your McMaster account</div>
         <form onSubmit={submit}>
-          <div className="field">
-            <label>MacID</label>
+          <Field label="MacID">
             <input className="input" autoFocus value={username} onChange={(e) => setUsername(e.target.value)} />
-          </div>
-          <div className="field">
-            <label>Password</label>
+          </Field>
+          <Field label="Password">
             <input className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
-          </div>
-          {error && <div style={{ color: "var(--red)", marginBottom: 10 }}>{error}</div>}
-          <button className="btn primary" style={{ width: "100%", justifyContent: "center", height: 34 }} disabled={busy}>
+          </Field>
+          {error && <div className="form-error" role="alert">{error}</div>}
+          <button className="btn primary full-width" disabled={busy}>
             Continue
           </button>
         </form>

@@ -1,3 +1,4 @@
+import { icons } from "../../icons";
 import { useEffect, useRef } from "react";
 import { timeAgo } from "../../config";
 import type { Feedback } from "../../types";
@@ -7,8 +8,8 @@ export function RateButtons({ fb, onRate }: { fb: Feedback; onRate: (helpful: bo
   return (
     <div className="fb-rate">
       <span>Was this helpful?</span>
-      <button className={`icon-btn ${fb.student_helpful === true ? "sel" : ""}`} title="Helpful" onClick={() => onRate(true)}>👍</button>
-      <button className={`icon-btn ${fb.student_helpful === false ? "sel" : ""}`} title="Not helpful" onClick={() => onRate(false)}>👎</button>
+      <button className={`icon-btn ${fb.student_helpful === true ? "sel" : ""}`} title="Helpful" onClick={() => onRate(true)}>{icons.helpful}</button>
+      <button className={`icon-btn ${fb.student_helpful === false ? "sel" : ""}`} title="Not helpful" onClick={() => onRate(false)}>{icons.unhelpful}</button>
     </div>
   );
 }
@@ -45,7 +46,7 @@ export function ChatPanel({ items, canRate, onRate }: {
       {items.map((f) => (
         <div key={f.id} style={{ marginBottom: 16 }}>
           <div className="row small faint" style={{ marginBottom: 4 }}>
-            <span>✍️ Writing tutor</span>
+            <span>{icons.writing} Writing tutor</span>
             {f.venue === "realtime" && <Tag color="orange">pop-up</Tag>}
             <span className="spacer" />
             <span>{timeAgo(f.created_at)}</span>
@@ -66,7 +67,7 @@ export function CharacterPanel({ items, canRate, onRate }: {
   return (
     <>
       <div className="character">
-        <div className="character-avatar">🦉</div>
+        <div className="character-avatar">{icons.character}</div>
         <div className="speech">
           {latest ? <FeedbackBody fb={latest} /> : <span>Hoo! I'm Ollie. Ask me for feedback whenever you're ready.</span>}
           {latest && canRate && <RateButtons fb={latest} onRate={(h) => onRate(latest, h)} />}
@@ -110,19 +111,19 @@ export function RealtimeView({ fb, mode, canRate, onRate, onDismiss, anchorTop }
   if (mode === "window") {
     return (
       <div className="rt-window">
-        <div className="rt-window-bar"><span>⚡ Writing tip</span><span className="spacer" />
-          <button className="icon-btn" style={{ width: 22, height: 22 }} onClick={onDismiss}>✕</button>
+        <div className="rt-window-bar"><span>{icons.realtime} Writing tip</span><span className="spacer" />
+          <button className="icon-btn sm" title="Dismiss writing tip" onClick={onDismiss}>{icons.close}</button>
         </div>
         <div className="rt-window-body">{body}</div>
       </div>
     );
   }
   if (mode === "highlight") {
-    return <div className="rt-highlight-note"><div className="small faint" style={{ marginBottom: 4 }}>🖍️ About the highlighted text</div>{body}</div>;
+    return <div className="rt-highlight-note"><div className="small faint" style={{ marginBottom: 4 }}>{icons.highlight} About the highlighted text</div>{body}</div>;
   }
   return (
     <div ref={popRef} className={`rt-popup${anchored ? " anchored" : ""}`} style={anchored ? { top: anchorTop! } : undefined}>
-      <div className="small faint" style={{ marginBottom: 4 }}>⚡ Quick tip</div>{body}
+      <div className="small faint" style={{ marginBottom: 4 }}>{icons.realtime} Quick tip</div>{body}
     </div>
   );
 }

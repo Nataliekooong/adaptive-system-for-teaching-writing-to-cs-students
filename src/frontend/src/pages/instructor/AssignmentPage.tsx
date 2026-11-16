@@ -1,11 +1,12 @@
+import { icons, moduleIcon } from "../../icons";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api } from "../../api";
 import { countOverrides, fmtDate, mergeConfig } from "../../config";
-import { ModuleConfigEditor, moduleIcon } from "../../components/ModuleConfigEditor";
+import { ModuleConfigEditor } from "../../components/ModuleConfigEditor";
 import type { Assignment, Config, ConfigOverrides, Course, UserRef } from "../../types";
 import {
-  Board, Callout, Loading, Modal, PageHeader, Prop, Props, Switch, Tag, Topbar, useLoad, useToast, Views,
+  Board, Callout, Field, Loading, Modal, PageHeader, Prop, Props, Switch, Tag, Topbar, useLoad, useToast, Views,
 } from "../../ui";
 import { useInstructor } from "./InstructorLayout";
 
@@ -22,11 +23,11 @@ interface SubRow {
 }
 
 const TABS = [
-  { key: "overview", label: "Overview", icon: "📄" },
-  { key: "modules", label: "Modules", icon: "🧩" },
-  { key: "students", label: "Students", icon: "👥" },
-  { key: "submissions", label: "Submissions", icon: "📨" },
-  { key: "effective", label: "Effective config", icon: "🔍" },
+  { key: "overview", label: "Overview", icon: icons.document },
+  { key: "modules", label: "Modules", icon: icons.modules },
+  { key: "students", label: "Students", icon: icons.students },
+  { key: "submissions", label: "Submissions", icon: icons.submissions },
+  { key: "effective", label: "Effective config", icon: icons.search },
 ];
 
 // I5 quick presets for "type of feedback each student receives"
@@ -91,8 +92,8 @@ export default function AssignmentPage() {
   };
 
   const saveBar = (
-    <div className="row" style={{ position: "sticky", top: 0, background: "#fff", padding: "8px 0", zIndex: 2 }}>
-      <span className="spacer" />
+    <div className="form-actions sticky-actions">
+
       {dirty && <button className="btn" onClick={() => setForm(a)}>Discard</button>}
       <button className="btn primary" disabled={!dirty} onClick={save}>Save</button>
     </div>
@@ -103,36 +104,36 @@ export default function AssignmentPage() {
       <Topbar
         onToggleSidebar={toggleSidebar}
         crumbs={[
-          { label: c.code, icon: "🎓", to: `/i/courses/${c.id}` },
-          { label: "Assignments", icon: "📝", to: `/i/courses/${c.id}/assignments` },
+          { label: c.code, icon: icons.course, to: `/i/courses/${c.id}` },
+          { label: "Assignments", icon: icons.assignment, to: `/i/courses/${c.id}/assignments` },
           { label: a.title },
         ]}
         right={<button className="btn danger" onClick={() => setConfirming(true)}>Delete</button>}
       />
       <div className="content">
         <div className="page wide">
-          <PageHeader icon="📝" title={<input className="page-title-input" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />} />
+          <PageHeader icon={icons.assignment} title={<input className="page-title-input" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />} />
           <Props>
-            <Prop icon="📅" label="Due" editable>
+            <Prop icon={icons.date} label="Due" editable>
               <input
-                className="input ghost" type="datetime-local" style={{ width: 230 }}
+                className="input ghost" type="datetime-local"
                 value={form.due_date ? new Date(form.due_date).toISOString().slice(0, 16) : ""}
                 onChange={(e) => setForm({ ...form, due_date: e.target.value ? new Date(e.target.value + "Z").toISOString() : null })}
               />
             </Prop>
-            <Prop icon="👁" label="Visible to students"><Switch on={form.published} onChange={(v) => setForm({ ...form, published: v })} /></Prop>
-            <Prop icon="🎯" label="Feedback priority areas">
+            <Prop icon={icons.visible} label="Visible to students"><Switch on={form.published} onChange={(v) => setForm({ ...form, published: v })} /></Prop>
+            <Prop icon={icons.target} label="Feedback priority areas">
               {c.rubric_areas.map((r) => {
                 const on = form.rubric_areas.includes(r);
                 return (
                   <span key={r} style={{ cursor: "pointer", opacity: on ? 1 : 0.45 }}
                         onClick={() => setForm({ ...form, rubric_areas: on ? form.rubric_areas.filter((x) => x !== r) : [...form.rubric_areas, r] })}>
-                    <Tag color={on ? "purple" : "gray"}>{on ? "✓ " : ""}{r}</Tag>
+                    <Tag color={on ? "purple" : "gray"}>{on ? (icons.check + " ") : ""}{r}</Tag>
                   </span>
                 );
               })}
             </Prop>
-            <Prop icon="🧩" label="Module overrides">
+            <Prop icon={icons.modules} label="Module overrides">
               {countOverrides(form.config) ? Object.keys(form.config).map((m) => <Tag key={m} color="blue">{moduleIcon(m)} {registry.modules.find((x) => x.key === m)?.label}</Tag>) : <span className="faint">Inherits course defaults</span>}
             </Prop>
           </Props>
@@ -141,16 +142,16 @@ export default function AssignmentPage() {
           {tab === "overview" && (
             <>
               {saveBar}
-              <div className="field"><label>Description</label><input className="input" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></div>
-              <div className="field"><label>Instructions</label><textarea className="textarea" rows={5} value={form.instructions} onChange={(e) => setForm({ ...form, instructions: e.target.value })} /></div>
-              <div className="field"><label>Genre guidance / example</label><textarea className="textarea" rows={4} value={form.genre_guidance} onChange={(e) => setForm({ ...form, genre_guidance: e.target.value })} /></div>
-              <div className="field"><label>🚀 “Get Started” outline & guiding questions (never a finished response)</label><textarea className="textarea" rows={7} value={form.get_started_content} onChange={(e) => setForm({ ...form, get_started_content: e.target.value })} /></div>
+              <Field label="Description"><input className="input" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></Field>
+              <Field label="Instructions"><textarea className="textarea" rows={5} value={form.instructions} onChange={(e) => setForm({ ...form, instructions: e.target.value })} /></Field>
+              <Field label="Genre guidance / example"><textarea className="textarea" rows={4} value={form.genre_guidance} onChange={(e) => setForm({ ...form, genre_guidance: e.target.value })} /></Field>
+              <Field label={<>{icons.getStarted} “Get Started” outline & guiding questions (never a finished response)</>}><textarea className="textarea" rows={7} value={form.get_started_content} onChange={(e) => setForm({ ...form, get_started_content: e.target.value })} /></Field>
             </>
           )}
 
           {tab === "modules" && (
             <>
-              <Callout icon="🧩" color="blue">
+              <Callout icon={icons.modules} color="blue">
                 Overrides for <b>this assignment only</b>. Anything left on “Inherit” follows the course defaults.
                 Experiments and per-student overrides can still change these for specific students.
               </Callout>
@@ -169,8 +170,8 @@ export default function AssignmentPage() {
         <Modal onClose={() => setConfirming(false)}>
           <h2 style={{ marginTop: 0 }}>Delete {a.title}?</h2>
           <p className="muted">This removes the assignment and its drafts, submissions, feedback and assignment-scoped experiments. Research logs stay.</p>
-          <div className="row">
-            <span className="spacer" />
+          <div className="form-actions">
+
             <button className="btn" onClick={() => setConfirming(false)}>Cancel</button>
             <button className="btn danger" onClick={remove}>Delete</button>
           </div>
@@ -205,17 +206,17 @@ function StudentsPanel({ a, course, inherited, onSaved }: { a: Detail; course: C
   const info = Object.fromEntries(a.students.map((s) => [s.id, s]));
   return (
     <>
-      <Callout icon="👥">
+      <Callout icon={icons.students}>
         Choose who gets this assignment and, if needed, the type of feedback each student receives.
         Per-student settings are the most specific layer — they win over experiment conditions, so the A/B page flags them.
       </Callout>
-      <div className="row" style={{ position: "sticky", top: 0, background: "#fff", padding: "8px 0", zIndex: 2 }}>
+      <div className="row sticky-actions">
         <span className="muted">{Object.keys(links).length} of {enrolled.data.length} assigned</span><span className="spacer" />
         {dirty && <button className="btn" onClick={() => setLinks(Object.fromEntries(a.students.map((s) => [s.id, s.override_config])))}>Discard</button>}
         <button className="btn primary" disabled={!dirty} onClick={save}>Save</button>
       </div>
       <table className="table">
-        <thead><tr><th>Assigned</th><th>Aa Student</th><th>🧪 Conditions</th><th>💬 Feedback type</th><th>Effective</th><th /></tr></thead>
+        <thead><tr><th>Assigned</th><th>{icons.text} Student</th><th>{icons.experiments} Conditions</th><th>{icons.feedback} Feedback type</th><th>Effective</th><th /></tr></thead>
         <tbody>
           {enrolled.data.map((u) => {
             const assigned = u.id in links;
@@ -230,7 +231,7 @@ function StudentsPanel({ a, course, inherited, onSaved }: { a: Detail; course: C
                 <td>{s?.conditions.length ? s.conditions.map((c) => <Tag key={c.id} color="purple">{c.name}</Tag>) : <span className="faint">—</span>}</td>
                 <td>
                   {assigned && (
-                    <select className="select" style={{ width: 190 }} value={type}
+                    <select className="select control-compact" value={type}
                             onChange={(e) => setLinks({ ...links, [u.id]: FEEDBACK_TYPES[e.target.value]?.cfg ?? links[u.id] })}>
                       {Object.entries(FEEDBACK_TYPES).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
                       {type === "custom" && <option value="custom">Custom ({countOverrides(links[u.id])} overrides)</option>}
@@ -240,8 +241,8 @@ function StudentsPanel({ a, course, inherited, onSaved }: { a: Detail; course: C
                 <td className="small">
                   {s && (
                     <div className="row wrap" style={{ gap: 4 }}>
-                      <Tag color={s.effective.on_demand ? "green" : "gray"}>💬 {s.effective.on_demand || "off"}</Tag>
-                      <Tag color={s.effective.realtime ? "green" : "gray"}>⚡ {s.effective.realtime || "off"}</Tag>
+                      <Tag color={s.effective.on_demand ? "green" : "gray"}>{icons.feedback} {s.effective.on_demand || "off"}</Tag>
+                      <Tag color={s.effective.realtime ? "green" : "gray"}>{icons.realtime} {s.effective.realtime || "off"}</Tag>
                     </div>
                   )}
                 </td>
@@ -256,7 +257,7 @@ function StudentsPanel({ a, course, inherited, onSaved }: { a: Detail; course: C
           <h2 style={{ marginTop: 0 }}>Per-student overrides · {enrolled.data.find((u) => u.id === editing)?.display_name}</h2>
           <ModuleConfigEditor registry={registry} value={links[editing] ?? {}} inherited={inherited}
                               onChange={(v) => setLinks({ ...links, [editing]: v })} inheritLabel="assignment" />
-          <div className="row" style={{ marginTop: 12 }}><span className="spacer" /><button className="btn primary" onClick={() => setEditing(null)}>Done</button></div>
+          <div className="form-actions" style={{ marginTop: 12 }}><button className="btn primary" onClick={() => setEditing(null)}>Done</button></div>
         </Modal>
       )}
     </>
@@ -316,16 +317,16 @@ function EffectivePanel({ a }: { a: Detail }) {
     p === "system" ? "gray" : p === "course" ? "brown" : p === "assignment" ? "blue" : p.startsWith("experiment") ? "purple" : p.startsWith("dependency") ? "orange" : "pink";
   return (
     <>
-      <Callout icon="🔍">
+      <Callout icon={icons.search}>
         What a specific student actually gets, and which layer decided each value. Use this to sanity-check an A/B setup.
       </Callout>
       <div className="row" style={{ margin: "8px 0 12px" }}>
         <span className="muted">Student</span>
-        <select className="select" style={{ width: 240 }} value={sid} onChange={(e) => setSid(e.target.value ? Number(e.target.value) : "")}>
+        <select className="select control-compact" value={sid} onChange={(e) => setSid(e.target.value ? Number(e.target.value) : "")}>
           <option value="">(no student — base config)</option>
           {a.students.map((s) => <option key={s.id} value={s.id}>{s.display_name}</option>)}
         </select>
-        {eff.data?.conditions.map((c) => <Tag key={c.name} color="purple">🧪 {c.experiment} → {c.name}</Tag>)}
+        {eff.data?.conditions.map((c) => <Tag key={c.name} color="purple">{icons.experiments} {c.experiment} {icons.forward} {c.name}</Tag>)}
       </div>
       {!eff.data ? <Loading error={eff.error} /> : (
         <table className="table">

@@ -1,3 +1,4 @@
+import { icons } from "../../icons";
 import { useEffect, useState } from "react";
 import { Outlet, useLocation, useNavigate, useOutletContext } from "react-router-dom";
 import { api } from "../../api";
@@ -16,13 +17,13 @@ interface Ctx {
 export const useInstructor = () => useOutletContext<Ctx>();
 
 export const COURSE_TABS = [
-  { key: "assignments", label: "Assignments", icon: "📝" },
-  { key: "experiments", label: "A/B experiments", icon: "🧪" },
-  { key: "modules", label: "Course modules", icon: "🧩" },
-  { key: "review", label: "Review", icon: "⭐" },
-  { key: "students", label: "Students", icon: "👥" },
-  { key: "library", label: "Feedback library", icon: "📚" },
-  { key: "research", label: "Research data", icon: "📊" },
+  { key: "assignments", label: "Assignments", icon: icons.assignment },
+  { key: "experiments", label: "A/B experiments", icon: icons.experiments },
+  { key: "modules", label: "Course modules", icon: icons.modules },
+  { key: "review", label: "Review", icon: icons.review },
+  { key: "students", label: "Students", icon: icons.students },
+  { key: "library", label: "Feedback library", icon: icons.library },
+  { key: "research", label: "Research data", icon: icons.research },
 ];
 
 export default function InstructorLayout() {
@@ -45,15 +46,15 @@ export default function InstructorLayout() {
       <aside className={`sidebar ${collapsed ? "collapsed" : ""}`}>
         <div className="sidebar-inner">
           <div className="sb-workspace">
-            <span className="sb-avatar">✍</span>
+            <span className="sb-avatar">{icons.writing}</span>
             <span style={{ flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
               {me!.display_name}'s Workspace
             </span>
-            <button className="icon-btn" title="Collapse sidebar" onClick={() => setCollapsed(true)}>«</button>
+            <button className="icon-btn" title="Collapse sidebar" onClick={() => setCollapsed(true)}>{icons.collapse}</button>
           </div>
           <div className="sb-scroll">
             <div className={`sb-item ${loc.pathname === "/i" ? "active" : ""}`} onClick={() => nav("/i")}>
-              <span className="ico">🏠</span><span className="label">Home</span>
+              <span className="ico">{icons.home}</span><span className="label">Home</span>
             </div>
             <div className="sb-section">Courses</div>
             {courses.data.map((c) => {
@@ -68,8 +69,8 @@ export default function InstructorLayout() {
                     <span
                       className={`caret ${open ? "open" : ""}`} style={{ width: 16 }}
                       onClick={(e) => { e.stopPropagation(); setOpenCourse({ ...openCourse, [c.id]: !open }); }}
-                    >▶</span>
-                    <span className="ico">🎓</span>
+                    >{icons.expand}</span>
+                    <span className="ico">{icons.course}</span>
                     <span className="label">{c.code}</span>
                   </div>
                   {open && COURSE_TABS.map((t) => (
@@ -88,7 +89,7 @@ export default function InstructorLayout() {
           </div>
           <div className="sb-footer">
             <div className="sb-item" onClick={() => logout().then(() => nav("/login"))}>
-              <span className="ico">↩︎</span><span className="label">Log out</span>
+              <span className="ico">{icons.logout}</span><span className="label">Log out</span>
             </div>
           </div>
         </div>

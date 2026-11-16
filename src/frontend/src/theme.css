@@ -1,0 +1,100 @@
+/* Shared color scheme and sizing. Change theme values here, never in a page. */
+:root {
+  --text: #37352f;
+  --text-2: #62615f;
+  --text-3: #74736f;
+  --bg: var(--surface);
+  --sidebar: var(--surface);
+  --hover: rgba(55, 53, 47, 0.06);
+  --active: rgba(55, 53, 47, 0.09);
+  --border: rgba(55, 53, 47, 0.09);
+  --border-2: rgba(55, 53, 47, 0.16);
+  --blue: #1b65b9;
+  --blue-hover: #15549c;
+  --blue-bg: rgba(35, 131, 226, 0.07);
+  --red: #b73636;
+  --card-shadow: rgba(15, 15, 15, 0.07) 0 0 0 1px, rgba(15, 15, 15, 0.05) 0 2px 4px;
+  --pop-shadow: rgba(15, 15, 15, 0.05) 0 0 0 1px, rgba(15, 15, 15, 0.1) 0 3px 6px, rgba(15, 15, 15, 0.2) 0 9px 24px;
+
+  /* Explicit status accents: background / text / dot. */
+  --gray-bg: #e3e2e0;   --gray-tx: #32302c;   --gray-dot: #91918e;
+  --brown-bg: #eee0da;  --brown-tx: #442a1e;
+  --orange-bg: #fadec9; --orange-tx: #49290e; --orange-dot: #d9730d;
+  --yellow-bg: #fdecc8; --yellow-tx: #402c1b; --yellow-dot: #cb912f;
+  --green-bg: #dbeddb;  --green-tx: #1c3829;  --green-dot: #448361;
+  --blue-tag-bg: #d3e5ef; --blue-tx: #183347; --blue-dot: #337ea9;
+  --purple-bg: #e8deee; --purple-tx: #412454; --purple-dot: #9065b0;
+  --pink-bg: #f5e0e9;   --pink-tx: #4c2337;
+  --red-bg: #ffe2dd;    --red-tx: #5d1715;    --red-dot: #d44c47;
+
+  --font: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", Helvetica,
+    "Apple Color Emoji", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol";
+  --serif: Lyon-Text, Georgia, ui-serif, serif;
+  --mono: "SFMono-Regular", Menlo, Consolas, monospace;
+
+  /* White is the default for every surface and native form control. */
+  color-scheme: light;
+  --surface: #ffffff;
+  --surface-hover: #fbfbfa;
+  --control-bg: var(--surface);
+  --on-accent: #ffffff;
+  --selection: rgba(35, 131, 226, 0.28);
+  --focus-ring: rgba(27, 101, 185, 0.22);
+  --switch-off: #a8a7a3;
+  --overlay: rgba(15, 15, 15, 0.4);
+  --toast-bg: #2f2f2f;
+  --toast-error-bg: #a52c28;
+  --callout-blue: #e7f3f8;
+  --callout-yellow: #fbf3db;
+  --callout-red: #fdebec;
+  --callout-green: #edf3ec;
+  --highlight-bg: rgba(255, 212, 0, 0.35);
+  --highlight-border: #a67b00;
+  --highlight-note-bg: #fffbe6;
+  --diff-removed-text: #a32232;
+  --diff-removed-bg: #fde8e9;
+  --diff-added-text: #146333;
+  --diff-added-bg: #e2f4e6;
+  --diff-added-underline: #459963;
+  --control-shadow: 0 1px 2px rgba(15, 15, 15, 0.12);
+  --switch-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --speech-shadow: -2px 2px 3px rgba(15, 15, 15, 0.06);
+
+  /* Shared component sizes; page layout may still adapt to its content. */
+  --font-size-body: 14px;
+  --font-size-label: 13px;
+  --font-size-small: 12px;
+  --font-size-subtitle: 15px;
+  --font-size-heading-small: 16px;
+  --font-size-writing: 17px;
+  --font-size-section: 20px;
+  --font-size-dialog: 22px;
+  --font-size-title: 32px;
+  --line-height: 1.5;
+  --control-height: 36px;
+  --control-height-small: 30px;
+  --control-padding-x: 10px;
+  --textarea-height: 96px;
+  --radius-control: 6px;
+  --radius-panel: 10px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --panel-padding: 16px;
+  --dialog-padding: 28px;
+  --dialog-width: 560px;
+  --dialog-width-wide: 860px;
+  --setting-control-width: 240px;
+  --setting-label-width: 260px;
+  --switch-track-width: 30px;
+  --switch-track-height: 18px;
+  --switch-thumb-size: 14px;
+  --switch-thumb-inset: 2px;
+  --property-control-width: 300px;
+  --icon-size: 18px;
+  --icon-size-caret: 10px;
+  --icon-size-page: 40px;
+  --icon-size-character: 52px;
+}

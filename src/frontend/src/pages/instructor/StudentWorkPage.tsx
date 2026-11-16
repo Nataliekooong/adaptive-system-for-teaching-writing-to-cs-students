@@ -1,9 +1,10 @@
+import { icons } from "../../icons";
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { api } from "../../api";
 import { fmtDate, wordCount } from "../../config";
 import type { Assignment, Feedback, UserRef } from "../../types";
-import { Loading, PageHeader, Tag, Topbar, useLoad, useToast } from "../../ui";
+import { Field, Loading, PageHeader, RatingScale, Tag, Topbar, useLoad, useToast } from "../../ui";
 import { useInstructor } from "./InstructorLayout";
 
 interface Revision {
@@ -61,8 +62,8 @@ function ReviewPage({ aid, sid }: { aid: string; sid: string }) {
       { label: "Review", to: reviewUrl }, { label: a.data.title, to: `/i/assignments/${aid}` }, { label: student.display_name },
     ]} />
     <div className="content"><div className="page review-page">
-      <Link className="review-back" to={reviewUrl}>← All students</Link>
-      <PageHeader icon="✎" title={student.display_name} />
+      <Link className="review-back" to={reviewUrl}>{icons.back} All students</Link>
+      <PageHeader icon={icons.edit} title={student.display_name} />
       <div className="row wrap review-meta">
         <span className="muted">{a.data.title} · {student.username}</span>
         <Tag color={submission ? "green" : "yellow"}>{submission ? "Submitted" : "In progress"}</Tag>
@@ -81,9 +82,9 @@ function ReviewPage({ aid, sid }: { aid: string; sid: string }) {
             </button>;
           })}
           <div className="review-pagination">
-            <button className="btn" aria-label="Previous revision page" disabled={page === 0} onClick={() => choose((page - 1) * 8)}>←</button>
+            <button className="btn" aria-label="Previous revision page" disabled={page === 0} onClick={() => choose((page - 1) * 8)}>{icons.back}</button>
             <span className="small muted">{page + 1} / {pages}</span>
-            <button className="btn" aria-label="Next revision page" disabled={page + 1 >= pages} onClick={() => choose((page + 1) * 8)}>→</button>
+            <button className="btn" aria-label="Next revision page" disabled={page + 1 >= pages} onClick={() => choose((page + 1) * 8)}>{icons.forward}</button>
           </div>
         </aside>
         <section className="revision-main" aria-label="Student writing">
@@ -114,9 +115,9 @@ function ReviewPage({ aid, sid }: { aid: string; sid: string }) {
                 : text || <span className="faint">No text in this revision.</span>}
             </article>
             <div className="revision-document-footer">
-              <button className="btn" disabled={!revision || index === 0} onClick={() => choose(index - 1)}>← Earlier</button>
+              <button className="btn" disabled={!revision || index === 0} onClick={() => choose(index - 1)}>{icons.back} Earlier</button>
               <span className="small muted">{revision?.is_submission ? "Final submitted version" : "Snapshot at feedback request"}</span>
-              <button className="btn" disabled={!revision || index + 1 >= revisions.length} onClick={() => choose(index + 1)}>Later →</button>
+              <button className="btn" disabled={!revision || index + 1 >= revisions.length} onClick={() => choose(index + 1)}>Later {icons.forward}</button>
             </div>
           </div>
           <section className="review-grade" aria-label="Overall assignment grade">
@@ -127,9 +128,9 @@ function ReviewPage({ aid, sid }: { aid: string; sid: string }) {
             {!submission ? <p className="muted">Grading opens after the student submits.</p> : <>
               <div className="row wrap small" style={{ marginBottom: 16 }}><span className="muted">Submitted {fmtDate(submission.submitted_at, true)}</span>
                 <button className="btn" onClick={() => choose(revisions.length - 1)}>View final submission</button></div>
-              <div className="field"><label htmlFor="overall-grade">Student grade</label><input id="overall-grade" className="input" maxLength={32} value={grade.grade} placeholder="e.g. 85 or A-" onChange={e => setGrade({ ...grade, grade: e.target.value })} /><span className="small muted">The student's assignment result. This does not train the bandit.</span></div>
-              <div className="field"><label htmlFor="overall-comments">Overall comments</label><textarea id="overall-comments" className="textarea" rows={4} value={grade.comments} placeholder="Feedback on the assignment as a whole…" onChange={e => setGrade({ ...grade, comments: e.target.value })} /></div>
-              <div className="row wrap"><span className="spacer" />
+              <Field label="Student grade"><input id="overall-grade" className="input" maxLength={32} value={grade.grade} placeholder="e.g. 85 or A-" onChange={e => setGrade({ ...grade, grade: e.target.value })} /><span className="small muted">The student's assignment result. This does not train the bandit.</span></Field>
+              <Field label="Overall comments"><textarea id="overall-comments" className="textarea" rows={4} value={grade.comments} placeholder="Feedback on the assignment as a whole…" onChange={e => setGrade({ ...grade, comments: e.target.value })} /></Field>
+              <div className="form-actions wrap">
                 <button className="btn outline" disabled={!grade.grade.trim() || saving} onClick={() => saveGrade(false)}>{saving ? "Saving…" : "Save grade"}</button>
                 {!submission.released && <button className="btn primary" disabled={!grade.grade.trim() || saving} onClick={() => saveGrade(true)}>Save & release</button>}
               </div>
@@ -168,14 +169,8 @@ function BanditRatingPanel({ submissionId, initial }: { submissionId: number; in
   return <section className="review-bandit-rating" aria-label="Bandit feedback rating">
     <h2>Bandit feedback rating</h2>
     <p className="small muted">How helpful was the AI feedback across this assignment? This instructor-only rating is separate from the student's grade.</p>
-    <fieldset disabled={locked || saving || status.eligible_decisions === 0}>
-      <legend className="small">1 = Not helpful · 3 = Moderately helpful · 5 = Very helpful</legend>
-      <div className="row wrap" style={{ marginTop: 10 }}>
-        {[1, 2, 3, 4, 5].map(n => <label key={n} className={`bandit-rating-option ${rating === n ? "selected" : ""}`}>
-          <input type="radio" name={`bandit-rating-${submissionId}`} value={n} checked={rating === n} onChange={() => setRating(n)} />{n}
-        </label>)}
-      </div>
-    </fieldset>
+    <RatingScale label="AI feedback helpfulness" value={rating} onChange={setRating}
+      low="Not helpful" high="Very helpful" disabled={locked || saving || status.eligible_decisions === 0} />
     {locked ? <p className="small" role="status">Recorded: {status.rating}/5 for {status.rated_decisions} feedback decisions. Rewards follow the configured student/instructor weighting and scheduled bandit updates.</p>
       : status.eligible_decisions === 0 ? <p className="muted small">No pending bandit decisions can receive this rating. Feedback may not use the bandit, instructor rewards may be disabled, or rewards may already be finalized.</p>
       : <>

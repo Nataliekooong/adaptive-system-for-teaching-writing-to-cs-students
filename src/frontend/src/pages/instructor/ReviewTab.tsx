@@ -3,7 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { api } from "../../api";
 import { fmtDate } from "../../config";
 import type { Assignment, Course, UserRef } from "../../types";
-import { Loading, STATUS_COLORS, Tag, useLoad } from "../../ui";
+import { Field, Loading, STATUS_COLORS, Tag, useLoad } from "../../ui";
 
 interface ReviewStudent {
   student: UserRef; submission_id: number | null; status: string;
@@ -19,11 +19,11 @@ export function ReviewTab({ course }: { course: Course }) {
   return <>
     <div className="review-toolbar">
       <div><h2 className="h">Student work</h2><p className="muted">Review each student's revisions and give one overall assignment grade.</p></div>
-      <label className="field">Assignment
-        <select className="input" value={selected.id} onChange={e => setParams({ assignment: e.target.value })}>
+      <Field label="Assignment">
+        <select className="select" value={selected.id} onChange={e => setParams({ assignment: e.target.value })}>
           {assignments.data.map(a => <option key={a.id} value={a.id}>{a.title}</option>)}
         </select>
-      </label>
+      </Field>
     </div>
     <StudentReviews key={selected.id} assignment={selected} />
   </>;
@@ -41,7 +41,7 @@ function StudentReviews({ assignment }: { assignment: Assignment }) {
     <div className="row wrap review-list-tools">
       <span className="muted">{rows.data.length} assigned · {rows.data.filter(r => r.submission_id !== null).length} submitted</span>
       <span className="spacer" />
-      <input className="input" style={{ maxWidth: 260 }} aria-label="Search students" placeholder="Search students…" value={search} onChange={e => { setSearch(e.target.value); setPage(0); }} />
+      <input className="input control-compact" aria-label="Search students" placeholder="Search students…" value={search} onChange={e => { setSearch(e.target.value); setPage(0); }} />
       <button className="btn outline" onClick={rows.reload}>Refresh</button>
     </div>
     {rows.error && <div role="alert">{rows.error}</div>}

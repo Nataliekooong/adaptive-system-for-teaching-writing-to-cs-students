@@ -1,17 +1,8 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import type { Config, ConfigOverrides, ModuleSchema, Registry, SettingSchema } from "../types";
 import { mergeConfig } from "../config";
 import { Seg, Switch, Tag } from "../ui";
-
-const MODULE_ICONS: Record<string, string> = {
-  on_demand_feedback: "💬", realtime_feedback: "⚡", feedback_presentation: "🎭", student_rating: "👍",
-  instructor_review: "🧑‍🏫", reward: "🎯", learner_model: "🧠", questionnaire: "📋", get_started: "🚀",
-  version_history: "🕘", paste_control: "📋", submission_rules: "📏", grades: "🎓",
-};
-
-export function moduleIcon(key: string) {
-  return MODULE_ICONS[key] ?? "🧩";
-}
+import { icons, moduleIcon } from "../icons";
 
 /**
  * Schema-driven editor for ONE configuration layer. `value` holds only this layer's overrides;
@@ -30,6 +21,7 @@ export function ModuleConfigEditor({
   readOnly?: boolean;
 }) {
   const effective = mergeConfig(inherited, value);
+  const editorId = useId();
   const [open, setOpen] = useState<Record<string, boolean>>({});
   const mods = registry.modules.filter(filter ?? (() => true));
   const cats = [...new Set(mods.map((m) => m.category))];
@@ -48,7 +40,7 @@ export function ModuleConfigEditor({
   };
 
   return (
-    <div>
+    <div className="module-config">
       {cats.map((cat) => (
         <div key={cat}>
           <div className="mod-cat">{cat}</div>
@@ -59,27 +51,31 @@ export function ModuleConfigEditor({
             const isOn = effective[m.key].enabled && blockedBy.length === 0;
             const nOwn = Object.keys(own).filter((k) => k !== "enabled").length;
             const isOpen = open[m.key] ?? false;
+            const panelId = `${editorId}-${m.key}`;
             return (
               <div className="mod" key={m.key}>
                 <div className="mod-head">
-                  <span
-                    className={`caret ${isOpen ? "open" : ""}`} style={{ cursor: "pointer" }}
+                  <button type="button" aria-label={`Toggle ${m.label} settings`} aria-expanded={isOpen} aria-controls={panelId}
+                    className="mod-toggle"
                     onClick={() => setOpen({ ...open, [m.key]: !isOpen })}
-                  >▶</span>
-                  <span style={{ fontSize: 16 }}>{moduleIcon(m.key)}</span>
-                  <div style={{ flex: 1, minWidth: 0, cursor: "pointer" }} onClick={() => setOpen({ ...open, [m.key]: !isOpen })}>
-                    <div className="row" style={{ gap: 6 }}>
-                      <span className="mod-title">{m.label}</span>
-                      {nOwn > 0 && <Tag color="blue">{nOwn} setting{nOwn > 1 ? "s" : ""} changed</Tag>}
-                      {blockedBy.length > 0 && <Tag color="orange">needs {blockedBy.join(", ")}</Tag>}
-                    </div>
-                    <div className="mod-desc">{m.description}</div>
-                  </div>
+                  >
+                    <span className={`caret ${isOpen ? "open" : ""}`} aria-hidden="true">{icons.expand}</span>
+                    <span className="module-icon" aria-hidden="true">{moduleIcon(m.key)}</span>
+                    <span className="mod-info">
+                      <span className="mod-heading">
+                        <span className="mod-title">{m.label}</span>
+                        {nOwn > 0 && <Tag color="blue">{nOwn} setting{nOwn > 1 ? "s" : ""} changed</Tag>}
+                        {blockedBy.length > 0 && <Tag color="orange">needs {blockedBy.map((key) => registry.modules.find((mod) => mod.key === key)?.label ?? key).join(", ")}</Tag>}
+                      </span>
+                      <span className="mod-desc">{m.description}</span>
+                    </span>
+                  </button>
                   {readOnly ? (
                     <Tag color={isOn ? "green" : "gray"} dot>{isOn ? "On" : "Off"}</Tag>
                   ) : (
-                    <div className="row" style={{ gap: 8 }}>
+                    <div className="mod-state">
                       <Seg
+                        label={`${m.label} availability`}
                         value={enabledOverride === undefined ? "inherit" : enabledOverride ? "on" : "off"}
                         options={[
                           { value: "inherit", label: `Inherit (${inherited[m.key].enabled ? "on" : "off"})` },
@@ -91,8 +87,8 @@ export function ModuleConfigEditor({
                     </div>
                   )}
                 </div>
-                {isOpen && (
-                  <div className="mod-body">
+                <div id={panelId} className="mod-body" hidden={!isOpen}>
+                  {isOpen && <>
                     {m.settings.length === 0 && <div className="faint small">No settings — this module is a pure on/off switch.</div>}
                     {m.settings.map((s) => (
                       <SettingRow
@@ -102,8 +98,8 @@ export function ModuleConfigEditor({
                         onChange={(v) => set(m.key, s.key, v)} onReset={() => unset(m.key, s.key)}
                       />
                     ))}
-                  </div>
-                )}
+                  </>}
+                </div>
               </div>
             );
           })}
@@ -124,38 +120,40 @@ function SettingRow({ s, value, overridden, inheritedValue, inheritLabel, onChan
   onChange: (v: unknown) => void; onReset: () => void; registry: Registry; readOnly?: boolean;
 }) {
   const options = s.options_source === "styles" ? registry.styles.map((x) => x.key) : s.options ?? [];
+  const controlId = useId();
+  const labelId = `${controlId}-label`;
+  const helpId = s.help ? `${controlId}-help` : undefined;
   let ctrl;
   if (s.type === "bool") {
-    ctrl = <Switch on={!!value} onChange={onChange} disabled={readOnly} />;
+    ctrl = <Switch id={controlId} describedBy={helpId} on={!!value} onChange={onChange} disabled={readOnly} />;
   } else if (s.type === "enum") {
     ctrl = (
-      <select className="select" value={String(value)} disabled={readOnly} onChange={(e) => onChange(e.target.value)}>
+      <select id={controlId} aria-describedby={helpId} className="select" value={String(value)} disabled={readOnly} onChange={(e) => onChange(e.target.value)}>
         {options.map((o) => <option key={o} value={o}>{o.replace(/_/g, " ")}</option>)}
       </select>
     );
   } else if (s.type === "multi_enum") {
     const cur = (value as string[]) ?? [];
     ctrl = (
-      <div className="row wrap" style={{ gap: 4 }}>
+      <div className="setting-options" role="group" aria-labelledby={labelId} aria-describedby={helpId}>
         {options.map((o) => {
           const on = cur.includes(o);
           return (
             <button
-              key={o} type="button" disabled={readOnly} className="btn sm outline"
-              style={on ? { background: "var(--blue-bg)", color: "var(--blue)" } : undefined}
+              key={o} type="button" disabled={readOnly} className={`btn outline ${on ? "selected" : ""}`} aria-pressed={on}
               onClick={() => onChange(on ? cur.filter((x) => x !== o) : [...cur, o])}
-            >{on ? "✓ " : ""}{o.replace(/_/g, " ")}</button>
+            >{on ? (icons.check + " ") : ""}{o.replace(/_/g, " ")}</button>
           );
         })}
         {cur.length === 0 && <span className="faint small">none selected = all enabled styles</span>}
       </div>
     );
   } else if (s.type === "text") {
-    ctrl = <textarea className="textarea" value={String(value ?? "")} disabled={readOnly} onChange={(e) => onChange(e.target.value)} />;
+    ctrl = <textarea id={controlId} aria-describedby={helpId} className="textarea" value={String(value ?? "")} disabled={readOnly} onChange={(e) => onChange(e.target.value)} />;
   } else {
     ctrl = (
       <input
-        className="input" type="number" disabled={readOnly} value={String(value)}
+        id={controlId} aria-describedby={helpId} className="input" type="number" disabled={readOnly} value={String(value)}
         min={s.min ?? undefined} max={s.max ?? undefined} step={s.type === "float" ? 0.05 : 1}
         onChange={(e) => e.target.value !== "" && onChange(s.type === "int" ? parseInt(e.target.value) : parseFloat(e.target.value))}
       />
@@ -164,19 +162,22 @@ function SettingRow({ s, value, overridden, inheritedValue, inheritLabel, onChan
   return (
     <div className="set-row" title={s.help}>
       <div className="set-label">
-        {s.label}
-        {s.help && <div className="faint" style={{ fontSize: 11.5, lineHeight: 1.3 }}>{s.help}</div>}
+        {s.type === "multi_enum"
+          ? <span id={labelId} className="field-label">{s.label}</span>
+          : <label id={labelId} className="field-label" htmlFor={controlId}>{s.label}</label>}
+        {s.help && <div id={helpId} className="field-hint">{s.help}</div>}
       </div>
       <div className="set-ctrl">
-        {ctrl}
-        {overridden ? (
+        <div className={`setting-control ${s.type === "text" || s.type === "multi_enum" ? "wide" : ""}`}>{ctrl}</div>
+        <div className="setting-meta">{overridden ? (
           <>
-            <span className="prov here">● set here</span>
-            {!readOnly && <button className="reset" onClick={onReset}>reset to {fmt(inheritedValue)}</button>}
+            <span className="prov here">{icons.bullet} set here</span>
+            {!readOnly && <button type="button" className="btn sm outline" title={`Reset to ${fmt(inheritedValue)}`}
+              aria-label={`Reset ${s.label} to ${fmt(inheritedValue)}`} onClick={onReset}>Reset to inherited</button>}
           </>
         ) : (
           <span className="prov">from {inheritLabel}</span>
-        )}
+        )}</div>
       </div>
     </div>
   );

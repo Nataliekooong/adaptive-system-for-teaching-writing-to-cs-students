@@ -1,66 +1,50 @@
+import { icons } from "../../icons";
 import { useState } from "react";
 import { api } from "../../api";
-import { Modal, useToast } from "../../ui";
-
-function Scale({ value, onChange, low, high }: { value: number; onChange: (v: number) => void; low: string; high: string }) {
-  return (
-    <div>
-      <div className="stars">
-        {[1, 2, 3, 4, 5].map((n) => (
-          <button
-            key={n} type="button" onClick={() => onChange(n)}
-            style={n === value ? { background: "var(--blue)", color: "#fff" } : undefined}
-          >{n}</button>
-        ))}
-      </div>
-      <div className="row faint small" style={{ width: 186, marginTop: 2 }}><span>{low}</span><span className="spacer" /><span>{high}</span></div>
-    </div>
-  );
-}
+import { Field, Modal, RatingScale, useToast } from "../../ui";
 
 /** S2: first-login questionnaire → initial learner profile. */
 export default function Questionnaire({ onDone }: { onDone: () => void }) {
   const toast = useToast();
+  const [saving, setSaving] = useState(false);
   const [v, setV] = useState({ writing_confidence: 3, technical_experience: 3, year_of_study: 2,
                                english_first_language: true, goals: "" });
   const save = async () => {
-    await api.post("/api/student/questionnaire", v);
-    toast("Thanks — your feedback will be tailored to you.");
-    onDone();
+    if (saving) return;
+    setSaving(true);
+    try {
+      await api.post("/api/student/questionnaire", v);
+      toast("Thanks — your feedback will be tailored to you.");
+      onDone();
+    } catch (e) { toast((e as Error).message, true); }
+    finally { setSaving(false); }
   };
   return (
     <Modal onClose={() => undefined}>
-      <div style={{ fontSize: 40 }}>👋</div>
-      <h2 style={{ fontSize: 22, margin: "6px 0 2px" }}>Welcome! A few quick questions</h2>
-      <div className="muted" style={{ marginBottom: 20 }}>This helps the tutor pick feedback that suits you. Takes under a minute.</div>
-      <div className="field">
-        <label>How confident are you in your writing?</label>
-        <Scale value={v.writing_confidence} onChange={(n) => setV({ ...v, writing_confidence: n })} low="Not at all" high="Very" />
-      </div>
-      <div className="field">
-        <label>How much technical (CS) experience do you have?</label>
-        <Scale value={v.technical_experience} onChange={(n) => setV({ ...v, technical_experience: n })} low="Little" high="A lot" />
-      </div>
+      <div className="dialog-icon" aria-hidden="true">{icons.welcome}</div>
+      <h2>Welcome! A few quick questions</h2>
+      <p className="muted">This helps the tutor pick feedback that suits you. Takes under a minute.</p>
+      <RatingScale label="How confident are you in your writing?" value={v.writing_confidence}
+        onChange={(n) => setV({ ...v, writing_confidence: n })} low="Not at all" high="Very" disabled={saving} />
+      <RatingScale label="How much technical (CS) experience do you have?" value={v.technical_experience}
+        onChange={(n) => setV({ ...v, technical_experience: n })} low="Little" high="A lot" disabled={saving} />
       <div className="grid2">
-        <div className="field">
-          <label>Year of study</label>
-          <select className="select" value={v.year_of_study} onChange={(e) => setV({ ...v, year_of_study: +e.target.value })}>
+        <Field label="Year of study">
+          <select className="select" disabled={saving} value={v.year_of_study} onChange={(e) => setV({ ...v, year_of_study: +e.target.value })}>
             {[1, 2, 3, 4, 5, 6].map((y) => <option key={y} value={y}>Year {y}</option>)}
           </select>
-        </div>
-        <div className="field">
-          <label>Is English your first language?</label>
-          <select className="select" value={v.english_first_language ? "y" : "n"}
+        </Field>
+        <Field label="Is English your first language?">
+          <select className="select" disabled={saving} value={v.english_first_language ? "y" : "n"}
                   onChange={(e) => setV({ ...v, english_first_language: e.target.value === "y" })}>
             <option value="y">Yes</option><option value="n">No</option>
           </select>
-        </div>
+        </Field>
       </div>
-      <div className="field">
-        <label>What would you like to improve? (optional)</label>
-        <textarea className="textarea" value={v.goals} onChange={(e) => setV({ ...v, goals: e.target.value })} />
-      </div>
-      <div className="row"><span className="spacer" /><button className="btn primary" onClick={save}>Start writing</button></div>
+      <Field label="What would you like to improve? (optional)">
+        <textarea className="textarea" disabled={saving} value={v.goals} onChange={(e) => setV({ ...v, goals: e.target.value })} />
+      </Field>
+      <div className="form-actions"><button className="btn primary" disabled={saving} onClick={save}>{saving ? "Saving…" : "Start writing"}</button></div>
     </Modal>
   );
 }
