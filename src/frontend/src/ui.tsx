@@ -66,24 +66,24 @@ export function Tag({ color = "gray", dot, children }: { color?: TagColor; dot?:
   );
 }
 
-export function Switch({ on, onChange, disabled, title }: {
-  on: boolean; onChange?: (v: boolean) => void; disabled?: boolean; title?: string;
+export function Switch({ on, onChange, disabled, title, id, describedBy }: {
+  on: boolean; onChange?: (v: boolean) => void; disabled?: boolean; title?: string; id?: string; describedBy?: string;
 }) {
   return (
     <button
-      type="button" title={title} role="switch" aria-checked={on} disabled={disabled}
+      id={id} type="button" title={title} role="switch" aria-checked={on} aria-describedby={describedBy} disabled={disabled}
       className={`switch ${on ? "on" : ""}`} onClick={() => onChange?.(!on)}
     />
   );
 }
 
-export function Seg<T extends string>({ value, options, onChange }: {
-  value: T; options: { value: T; label: string }[]; onChange: (v: T) => void;
+export function Seg<T extends string>({ value, options, onChange, label }: {
+  value: T; options: { value: T; label: string }[]; onChange: (v: T) => void; label?: string;
 }) {
   return (
-    <span className="seg">
+    <span className="seg" role="group" aria-label={label}>
       {options.map((o) => (
-        <button type="button" key={o.value} className={o.value === value ? "on" : ""} onClick={() => onChange(o.value)}>
+        <button type="button" key={o.value} className={o.value === value ? "on" : ""} aria-pressed={o.value === value} onClick={() => onChange(o.value)}>
           {o.label}
         </button>
       ))}

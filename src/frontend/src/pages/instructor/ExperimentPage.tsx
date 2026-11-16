@@ -189,28 +189,30 @@ export default function ExperimentPage() {
               {form.conditions.map((c, i) => {
                 const color = COND_COLORS[i % COND_COLORS.length];
                 const open = openCond === i;
+                const conditionId = `experiment-${e.id}-condition-${c.id === undefined ? `new-${i}` : c.id}`;
                 return (
                   <div key={c.id ?? `new${i}`} className="fb-card">
-                    <div className="row">
-                      <span className={`caret ${open ? "open" : ""}`} style={{ cursor: "pointer" }} onClick={() => setOpenCond(open ? null : i)}>{icons.expand}</span>
+                    <div className="row condition-head">
+                      <button type="button" className={`icon-btn sm caret ${open ? "open" : ""}`} aria-label={`Toggle ${c.name} settings`}
+                        aria-expanded={open} aria-controls={conditionId} onClick={() => setOpenCond(open ? null : i)}>{icons.expand}</button>
                       <Tag color={color} dot>Condition {String.fromCharCode(65 + i)}</Tag>
-                      <input className="input ghost condition-name" value={c.name} onChange={(ev) => setCond(i, { name: ev.target.value })} />
-                      <span className="faint small">weight</span>
-                      <input className="input control-number" type="number" min={0.1} step={0.1} value={c.weight} onChange={(ev) => setCond(i, { weight: Number(ev.target.value) || 1 })} />
+                      <input className="input ghost condition-name" aria-label={`Condition ${String.fromCharCode(65 + i)} name`} value={c.name} onChange={(ev) => setCond(i, { name: ev.target.value })} />
+                      <label className="faint small" htmlFor={`${conditionId}-weight`}>Weight</label>
+                      <input id={`${conditionId}-weight`} className="input control-number" type="number" min={0.1} step={0.1} value={c.weight} onChange={(ev) => setCond(i, { weight: Number(ev.target.value) || 1 })} />
                       {c.students !== undefined && <Tag color="gray">{icons.students} {c.students}</Tag>}
                       {(!c.students || e.status === "draft") && form.conditions.length > 1 && (
                         <button className="icon-btn" title="Remove condition" onClick={() => setForm({ ...form, conditions: form.conditions.filter((_, j) => j !== i) })}>{icons.delete}</button>
                       )}
                     </div>
-                    <div style={{ padding: "6px 0 0 30px" }}><OverrideSummary registry={registry} config={c.config} /></div>
-                    {open && (
-                      <div style={{ paddingLeft: 30, marginTop: 8 }}>
-                        <input className="input ghost muted" placeholder="Description (optional)" value={c.description} onChange={(ev) => setCond(i, { description: ev.target.value })} />
+                    <div className="condition-summary"><OverrideSummary registry={registry} config={c.config} /></div>
+                    <div id={conditionId} className="condition-settings" hidden={!open}>
+                      {open && <>
+                        <input className="input ghost muted" aria-label="Condition description" placeholder="Description (optional)" value={c.description} onChange={(ev) => setCond(i, { description: ev.target.value })} />
                         <ModuleConfigEditor registry={registry} value={c.config} inherited={inherited}
                                             onChange={(v) => setCond(i, { config: v })}
                                             inheritLabel={form.assignment_id ? "assignment" : "course"} />
-                      </div>
-                    )}
+                      </>}
+                    </div>
                   </div>
                 );
               })}

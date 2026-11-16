@@ -87,6 +87,11 @@
   --dialog-width: 560px;
   --dialog-width-wide: 860px;
   --setting-control-width: 240px;
+  --setting-label-width: 260px;
+  --switch-track-width: 30px;
+  --switch-track-height: 18px;
+  --switch-thumb-size: 14px;
+  --switch-thumb-inset: 2px;
   --property-control-width: 300px;
   --icon-size: 18px;
   --icon-size-caret: 10px;

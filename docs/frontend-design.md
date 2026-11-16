@@ -48,3 +48,9 @@ import { icons, moduleIcon } from "../../icons";
 ```
 
 The registry keeps the existing emoji icon style; a future icon-style change can be made from one source.
+
+The configuration editor is shared by course defaults, assignment overrides, experiment conditions, and per-student
+overrides. It uses the same white panels, form labels, help text, input heights, selection colors, and compact reset
+buttons. Control and label widths come from `--setting-control-width` and `--setting-label-width`. Rows stack based
+on the editor's own available width, including inside a dialog or experiment condition. Setting labels and help
+are associated with their controls; segmented choices and multi-select options expose their selected state.
