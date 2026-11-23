@@ -60,7 +60,7 @@ export default function AssignmentPage() {
   useEffect(() => { if (det.data) setForm(det.data); }, [det.data]);
 
   if (!det.data || !form || !course.data) {
-    return <><Topbar onToggleSidebar={toggleSidebar} crumbs={[{ label: "…" }]} /><Loading error={det.error} /></>;
+    return <><Topbar onToggleSidebar={toggleSidebar} crumbs={[{ label: "…" }]} /><Loading error={det.error ?? course.error} /></>;
   }
   const a = det.data;
   const c = course.data;
@@ -122,6 +122,14 @@ export default function AssignmentPage() {
               />
             </Prop>
             <Prop icon={icons.visible} label="Visible to students"><Switch on={form.published} onChange={(v) => setForm({ ...form, published: v })} /></Prop>
+            <Prop icon={icons.course} label="Assignment grading">
+              <Switch on={Boolean(form.config.assignment_grading?.enabled ?? inherited.assignment_grading?.enabled ?? true)}
+                onChange={enabled => setForm({ ...form, config: { ...form.config, assignment_grading: { ...form.config.assignment_grading, enabled } } })} />
+            </Prop>
+            <Prop icon={icons.feedback} label="Instructor feedback for bandit">
+              <Switch on={Boolean(form.config.instructor_review?.enabled ?? inherited.instructor_review?.enabled ?? true)}
+                onChange={enabled => setForm({ ...form, config: { ...form.config, instructor_review: { ...form.config.instructor_review, enabled } } })} />
+            </Prop>
             <Prop icon={icons.target} label="Feedback priority areas">
               {c.rubric_areas.map((r) => {
                 const on = form.rubric_areas.includes(r);
@@ -280,8 +288,8 @@ function SubmissionsPanel({ aid, onOpen }: { aid: number; onOpen: (sid: number) 
   return (
     <>
       <div className="row" style={{ marginBottom: 8 }}>
-        <span className="muted">Unreleased grades stay hidden from students.</span><span className="spacer" />
-        <button className="btn primary" disabled={!releasable.length} onClick={release}>Release {releasable.length} grade{releasable.length === 1 ? "" : "s"}</button>
+        <span className="muted">Save grades privately, then release individually or all at once.</span><span className="spacer" />
+        <button className="btn primary" disabled={!releasable.length} onClick={release}>Release all grades ({releasable.length})</button>
       </div>
       <Board
         columns={[

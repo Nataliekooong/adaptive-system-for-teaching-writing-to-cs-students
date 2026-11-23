@@ -1,0 +1,29 @@
+
+  VITE v5.4.11  ready in 876 ms
+
+  ➜  Local:   http://127.0.0.1:5173/
+10:02:29 PM [vite] hmr update /src/pages/instructor/StudentWorkPage.tsx
+10:02:59 PM [vite] hmr update /src/ui.tsx
+10:02:59 PM [vite] hmr invalidate /src/ui.tsx Could not Fast Refresh ("STATUS_COLORS" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+10:02:59 PM [vite] page reload src/ui.tsx
+10:03:00 PM [vite] hmr update /src/styles.css
+10:07:07 PM [vite] hmr update /src/ui.tsx, /src/pages/Login.tsx, /src/pages/student/StudentHome.tsx, /src/pages/instructor/CoursePage.tsx, /src/pages/student/Workspace.tsx, /src/pages/student/StudentLayout.tsx, /src/pages/instructor/InstructorLayout.tsx, /src/pages/instructor/StudentProfilePage.tsx, /src/pages/instructor/InstructorHome.tsx, /src/pages/instructor/StudentWorkPage.tsx, /src/pages/instructor/ExperimentPage.tsx, /src/pages/instructor/AssignmentPage.tsx, /src/pages/student/Questionnaire.tsx, /src/pages/student/FeedbackViews.tsx, /src/pages/instructor/CourseTabs.tsx, /src/components/ModuleConfigEditor.tsx
+10:07:07 PM [vite] hmr invalidate /src/ui.tsx Could not Fast Refresh ("STATUS_COLORS" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+10:07:07 PM [vite] page reload src/ui.tsx
+10:07:07 PM [vite] hmr invalidate /src/pages/student/StudentLayout.tsx Could not Fast Refresh ("useStudentCtx" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+10:07:07 PM [vite] hmr update /src/App.tsx, /src/pages/student/StudentHome.tsx, /src/pages/student/Workspace.tsx
+10:07:07 PM [vite] hmr invalidate /src/pages/instructor/InstructorLayout.tsx Could not Fast Refresh ("COURSE_TABS" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+10:07:07 PM [vite] hmr update /src/App.tsx, /src/pages/instructor/CoursePage.tsx, /src/pages/instructor/StudentProfilePage.tsx, /src/pages/instructor/InstructorHome.tsx, /src/pages/instructor/StudentWorkPage.tsx, /src/pages/instructor/ExperimentPage.tsx, /src/pages/instructor/AssignmentPage.tsx, /src/pages/instructor/CourseTabs.tsx
+10:07:36 PM [vite] hmr update /src/pages/instructor/CourseTabs.tsx
+10:07:37 PM [vite] hmr update /src/pages/instructor/AssignmentPage.tsx
+10:07:37 PM [vite] hmr update /src/pages/instructor/StudentWorkPage.tsx
+10:08:05 PM [vite] hmr update /src/pages/instructor/AssignmentPage.tsx
+10:08:36 PM [vite] hmr update /src/styles.css
+10:13:15 PM [vite] hmr update /src/pages/instructor/AssignmentPage.tsx
+10:17:45 PM [vite] hmr update /src/pages/instructor/StudentWorkPage.tsx
+10:20:39 PM [vite] hmr update /src/pages/instructor/StudentWorkPage.tsx
+10:20:40 PM [vite] hmr update /src/pages/instructor/ReviewTab.tsx
+10:20:40 PM [vite] hmr update /src/pages/instructor/AssignmentPage.tsx
+10:22:50 PM [vite] hmr update /src/pages/instructor/StudentWorkPage.tsx
+10:24:34 PM [vite] hmr update /src/pages/instructor/StudentWorkPage.tsx
+10:24:34 PM [vite] hmr update /src/styles.css

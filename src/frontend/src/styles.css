@@ -394,33 +394,34 @@ h3.h { font-size: var(--font-size-heading-small); font-weight: 600; margin: 20px
 .review-pagination { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 16px 0; }
 .review-back { display: inline-block; color: var(--text-2); margin-bottom: 16px; font-size: var(--font-size-label); }
 .review-meta { margin: 12px 0 24px; }
-.page.review-page { max-width: none; padding-left: 24px; padding-right: 32px; }
-.review-workspace { display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 20px; align-items: start; }
-.revision-feedback { border: 1px solid var(--border-2); border-radius: var(--radius-panel); padding: var(--panel-padding); margin-bottom: var(--space-4); background: var(--surface); }
+.page.review-page { max-width: 1240px; }
+.review-workspace { display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 32px; align-items: start; border-top: 1px solid var(--border); padding-top: var(--space-5); }
+.revision-feedback { border-left: 3px solid var(--border-2); padding: var(--space-3) var(--space-4); margin-bottom: var(--space-5); background: var(--surface-hover); border-radius: var(--radius-control); }
 .revision-feedback h2 { font-size: var(--font-size-heading-small); margin: 0; }
 .revision-feedback-item { margin-top: 14px; }
 .revision-feedback-item p { margin: 6px 0; }
 .revision-feedback-item blockquote { border-left: 3px solid var(--blue); padding-left: 12px; margin: 10px 0; white-space: pre-wrap; }
 .revision-sidebar { border-right: 1px solid var(--border); padding-right: 20px; }
 .revision-heading { display: flex; flex-direction: column; gap: 5px; margin-bottom: 16px; }
-.revision-item { display: flex; flex-direction: column; gap: 7px; width: 100%; text-align: left; font: inherit; cursor: pointer; border: 1px solid transparent; border-radius: 8px; padding: 13px 12px; background: transparent; margin-bottom: 6px; }
+.revision-item { display: flex; flex-direction: column; gap: var(--space-1); width: 100%; text-align: left; font: inherit; color: var(--text); cursor: pointer; border: 1px solid transparent; border-radius: var(--radius-control); padding: var(--space-3); background: transparent; margin-bottom: var(--space-1); }
 .revision-item:hover { background: var(--hover); }
-.revision-item.active { background: var(--blue-bg); border-color: var(--blue); box-shadow: inset 3px 0 var(--blue); }
+.revision-item.active { background: var(--blue-bg); color: var(--blue); }
 .revision-item:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 .revision-main { min-width: 0; }
-.revision-document { border: 1px solid var(--border-2); border-radius: var(--radius-panel); background: var(--surface); overflow: hidden; box-shadow: var(--card-shadow); }
-.revision-document-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 20px 26px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
-.revision-document h2, .review-grade h2 { margin: 0 0 5px; font-size: var(--font-size-heading-small); }
-.revision-legend { display: flex; gap: 20px; padding: 14px 28px 0; }
-.revision-writing { padding: 28px 36px 40px; min-height: 360px; white-space: pre-wrap; overflow-wrap: anywhere; font-family: var(--serif); font-size: var(--font-size-writing); line-height: 1.75; color: var(--text); }
+.revision-document { background: var(--surface); }
+.revision-document-toolbar { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); padding: 0 0 var(--space-4); border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+.revision-document h2, .review-grade h2, .review-bandit-rating h2 { margin: 0 0 5px; font-size: var(--font-size-heading-small); }
+.revision-legend { display: flex; flex-wrap: wrap; gap: var(--space-4); padding-top: var(--space-4); }
+.revision-writing { padding: var(--space-5) 0 40px; min-height: 360px; white-space: pre-wrap; overflow-wrap: anywhere; font-family: var(--font); font-size: var(--font-size-subtitle); line-height: 1.8; color: var(--text); }
 .revision-writing del, .revision-legend del { color: var(--diff-removed-text); background: var(--diff-removed-bg); text-decoration: line-through; text-decoration-thickness: 1.5px; }
 .revision-writing ins, .revision-legend ins { color: var(--diff-added-text); background: var(--diff-added-bg); text-decoration: underline; text-decoration-color: var(--diff-added-underline); text-underline-offset: 3px; }
-.revision-document-footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; border-top: 1px solid var(--border); padding: 12px 20px; }
-.review-grade { margin-top: var(--space-5); border: 1px solid var(--border-2); border-radius: var(--radius-panel); padding: var(--panel-padding); background: var(--surface); }
+.revision-document-footer { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--space-2); border-top: 1px solid var(--border); padding: var(--space-3) 0; }
+.review-grade { margin-top: var(--space-5); border-top: 1px solid var(--border); padding-top: var(--space-5); background: var(--surface); }
 .review-bandit-rating { border-top: 1px solid var(--border-2); margin-top: 24px; padding-top: 24px; }
+.review-grade-status { display: flex; flex-direction: column; align-items: flex-end; gap: var(--space-2); }
 .review-bandit-rating .rating-scale { margin: var(--space-4) 0; }
 @media (max-width: 800px) {
   .review-workspace { grid-template-columns: 1fr; }
   .revision-sidebar { border-right: 0; border-bottom: 1px solid var(--border); padding-right: 0; }
-  .revision-writing { padding: 22px; }
+  .revision-writing { padding: var(--space-5) 0; }
 }

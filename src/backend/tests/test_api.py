@@ -43,6 +43,75 @@ def course_and_assignment(c, inst):
     return course, a
 
 
+@pytest.mark.parametrize("grading,instructor_feedback", [(False, False), (False, True), (True, False), (True, True)])
+def test_assignment_grading_and_bandit_options(client, grading, instructor_feedback):
+    inst, stu = login(client, "drlee"), login(client, "priya")
+    course, _ = course_and_assignment(client, inst)
+    created = client.post(f"/api/instructor/courses/{course['id']}/assignments", headers=inst, json={
+        "title": "Optional grading", "config": {
+            "assignment_grading": {"enabled": grading},
+            "instructor_review": {"enabled": instructor_feedback},
+            "submission_rules": {"enabled": False},
+        },
+    })
+    assert created.status_code == 200, created.text
+    aid = created.json()["id"]
+    base = f"/api/student/assignments/{aid}"
+    submitted = client.post(f"{base}/submit", headers=stu, json={"content": LONG_DRAFT})
+    assert submitted.status_code == 200, submitted.text
+    sub_id = submitted.json()["id"]
+    roster = client.get(f"/api/instructor/assignments/{aid}/submissions", headers=inst).json()
+    sid = next(r["student"]["id"] for r in roster if r["student"]["username"] == "priya")
+    work = client.get(f"/api/instructor/assignments/{aid}/students/{sid}/work", headers=inst).json()
+    assert work["grading_enabled"] is grading
+    assert (work["bandit_rating"] is not None) is instructor_feedback
+    grade_url = f"/api/instructor/submissions/{sub_id}/grade"
+    result = client.post(grade_url, headers=inst, json={"grade": "85", "comments": "Well done", "release": True})
+    assert result.status_code == (200 if grading else 403)
+    detail = client.get(base, headers=stu).json()["submission"]
+    if grading:
+        assert detail["released"] is True
+        assert detail["grade"] == "85"
+        assert detail["comments"] == "Well done"
+        assert client.post(grade_url, headers=inst, json={"grade": "  ", "release": True}).status_code == 422
+        assert client.get(base, headers=stu).json()["submission"]["grade"] == "85"
+    else:
+        assert detail["released"] is False
+        assert "grade" not in detail
+    if not instructor_feedback:
+        assert client.post(f"/api/instructor/submissions/{sub_id}/bandit-rating", headers=inst,
+                           json={"rating": 5}).status_code == 403
+
+
+def test_save_individual_release_and_bulk_release(client):
+    inst = login(client, "drlee")
+    course, _ = course_and_assignment(client, inst)
+    a = client.post(f"/api/instructor/courses/{course['id']}/assignments", headers=inst,
+                    json={"title": "Release workflow", "config": {"submission_rules": {"enabled": False}}}).json()
+    base = f"/api/student/assignments/{a['id']}"
+    students = []
+    for username in ["alex", "marcus", "priya"]:
+        stu = login(client, username)
+        sub = client.post(f"{base}/submit", headers=stu, json={"content": LONG_DRAFT}).json()
+        grade_url = f"/api/instructor/submissions/{sub['id']}/grade"
+        assert client.post(grade_url, headers=inst, json={"grade": "80", "release": False}).status_code == 200
+        assert "grade" not in client.get(base, headers=stu).json()["submission"]
+        students.append((stu, sub["id"], grade_url))
+    stu, _, grade_url = students[0]
+    assert client.post(grade_url, headers=inst, json={"grade": "85", "release": True}).status_code == 200
+    assert client.get(base, headers=stu).json()["submission"]["grade"] == "85"
+    assert "grade" not in client.get(base, headers=students[1][0]).json()["submission"]
+    # Saving an edit is private again until explicitly released.
+    assert client.post(grade_url, headers=inst, json={"grade": "90", "release": False}).status_code == 200
+    assert "grade" not in client.get(base, headers=stu).json()["submission"]
+    result = client.post(f"/api/instructor/assignments/{a['id']}/release", headers=inst,
+                         json={"submission_ids": [sid for _, sid, _ in students]})
+    assert result.status_code == 200 and result.json()["updated"] == 3
+    for stu, _, _ in students:
+        detail = client.get(base, headers=stu).json()["submission"]
+        assert detail["released"] is True and detail["grade"]
+
+
 def test_review_history_without_ai_and_overall_grade(client):
     inst, stu = login(client, "drlee"), login(client, "priya")
     _, a = course_and_assignment(client, inst)
@@ -196,7 +265,7 @@ def test_assignment_bandit_rating_respects_reward_configuration(client, config):
     assert fb.status_code == 200, fb.text
     sub = client.post(f"{base}/submit", headers=stu, json={"content": LONG_DRAFT}).json()
     result = client.post(f"/api/instructor/submissions/{sub['id']}/bandit-rating", headers=inst, json={"rating": 5})
-    assert result.status_code == 409
+    assert result.status_code == (403 if config.get("instructor_review", {}).get("enabled") is False else 409)
     assert _decision_for(fb.json()["id"]).instructor_score is None
 
 
