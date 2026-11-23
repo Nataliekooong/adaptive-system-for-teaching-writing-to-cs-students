@@ -114,7 +114,7 @@ cd src/backend && python3 -m venv .venv && .venv/bin/pip install -r requirements
 .venv/bin/uvicorn app.main:app --port 8000
 
 # frontend (another terminal)
-cd src/frontend && npm ci && npm run dev   # http://localhost:5173
+cd src/frontend && npm run dev   # http://localhost:5173
 ```
 
 SQLite is the zero-setup default. Set `DATABASE_URL=postgresql+psycopg://…` for PostgreSQL, or run

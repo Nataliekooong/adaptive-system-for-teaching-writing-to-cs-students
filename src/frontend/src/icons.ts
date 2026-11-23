@@ -21,7 +21,7 @@ const MODULE_ICONS: Record<string, string> = {
   feedback_presentation: icons.presentation, student_rating: icons.helpful,
   instructor_review: icons.instructor, reward: icons.target, learner_model: icons.learner,
   questionnaire: icons.questionnaire, get_started: icons.getStarted, version_history: icons.history,
-  paste_control: icons.questionnaire, submission_rules: icons.rules, grades: icons.course,
+  paste_control: icons.questionnaire, submission_rules: icons.rules, grades: icons.course, assignment_grading: icons.course,
 };
 
 export function moduleIcon(key: string): string {

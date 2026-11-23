@@ -119,11 +119,11 @@ export function Topbar({ crumbs, right, onToggleSidebar }: {
 }
 
 export function PageHeader({ icon, title, sub, children }: {
-  icon: string; title: ReactNode; sub?: ReactNode; children?: ReactNode;
+  icon?: string; title: ReactNode; sub?: ReactNode; children?: ReactNode;
 }) {
   return (
     <div>
-      <div className="page-icon" aria-hidden="true">{icon}</div>
+      {icon && <div className="page-icon" aria-hidden="true">{icon}</div>}
       <h1 className="page-title">{title}</h1>
       {sub && <div className="page-sub">{sub}</div>}
       {children}

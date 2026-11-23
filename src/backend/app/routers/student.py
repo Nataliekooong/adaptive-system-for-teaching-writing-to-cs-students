@@ -106,7 +106,7 @@ def assignment_detail(assignment_id: int, user: User = Depends(require_student),
         "config": cfg.config,
         "draft": {"content": draft.content, "updated_at": draft.updated_at.isoformat() + "Z",
                   "locked": draft.locked, "last_saved_version_id": last_saved.id if last_saved else None},
-        "submission": submission_out(sub, include_grade=cfg.on("grades")) if sub else None,
+        "submission": submission_out(sub, include_grade=cfg.on("grades") and cfg.on("assignment_grading")) if sub else None,
     }
 
 

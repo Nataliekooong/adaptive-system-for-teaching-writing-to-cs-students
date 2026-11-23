@@ -453,14 +453,16 @@ def student_work(assignment_id: int, student_id: int, user: User = Depends(requi
                     .order_by(FeedbackItem.created_at.desc())).all()
     versions = db.scalars(select(DraftVersion).where(DraftVersion.draft_id == d.id)
                           .order_by(DraftVersion.id.desc())).all() if d else []
+    cfg = resolve_for_assignment(db, a, student_id, auto_assign=False)
     return {"student": _user_out(db.get(User, student_id)),
+            "grading_enabled": cfg.on("assignment_grading"),
             "draft": d.content if d else "", "submission": {
                 "id": s.id, "content": s.content, "submitted_at": iso(s.submitted_at), "grade": s.grade,
                 "comments": s.comments, "released": s.released} if s else None,
             "feedback": [feedback_out(f, research=True) for f in fb],
             "versions": [version_out(v) for v in versions],
             "revisions": revision_history(versions, s, fb),
-            "bandit_rating": _submission_bandit_status(db, s) if s else None}
+            "bandit_rating": _submission_bandit_status(db, s) if s and cfg.on("instructor_review") else None}
 
 
 def _eligible_submission_decisions(db: Session, submission: Submission):
@@ -496,6 +498,8 @@ def rate_submission_bandit(submission_id: int, body: SubmissionBanditRatingIn,
     if s is None:
         raise HTTPException(404, "Submission not found")
     a = _assignment(db, user, s.assignment_id)
+    if not resolve_for_assignment(db, a, s.student_id, auto_assign=False).on("instructor_review"):
+        raise HTTPException(403, "Instructor feedback for bandit is disabled")
     saved = db.get(SubmissionBanditRating, s.id)
     if saved:
         if saved.rating != body.rating:
@@ -522,8 +526,9 @@ def rate_submission_bandit(submission_id: int, body: SubmissionBanditRatingIn,
 
 
 class GradeIn(BaseModel):
-    grade: str
+    grade: str = Field(min_length=1, max_length=32)
     comments: str = ""
+    release: bool = False
 
 
 @router.post("/submissions/{submission_id}/grade")
@@ -531,8 +536,13 @@ def grade(submission_id: int, body: GradeIn, user: User = Depends(require_instru
     s = db.get(Submission, submission_id)
     if s is None:
         raise HTTPException(404, "Submission not found")
-    _assignment(db, user, s.assignment_id)
-    s.grade, s.comments = body.grade, body.comments
+    a = _assignment(db, user, s.assignment_id)
+    if not resolve_for_assignment(db, a, s.student_id, auto_assign=False).on("assignment_grading"):
+        raise HTTPException(403, "Grading is disabled for this assignment")
+    if not body.grade.strip():
+        raise HTTPException(422, "Grade must not be blank")
+    s.grade, s.comments = body.grade.strip(), body.comments
+    s.released = body.release
     db.commit()
     return {"ok": True}
 
@@ -549,6 +559,8 @@ def release(assignment_id: int, body: ReleaseIn, user: User = Depends(require_in
     n = 0
     for s in db.scalars(select(Submission).where(Submission.assignment_id == a.id,
                                                  Submission.id.in_(body.submission_ids))):
+        if body.released and not resolve_for_assignment(db, a, s.student_id, auto_assign=False).on("assignment_grading"):
+            continue
         if body.released and not s.grade:
             continue
         s.released = body.released
@@ -601,6 +613,8 @@ def instructor_rate(feedback_id: int, body: InstructorRatingIn, user: User = Dep
     if f is None:
         raise HTTPException(404, "Feedback not found")
     a = _assignment(db, user, f.assignment_id)
+    if not resolve_for_assignment(db, a, f.student_id, auto_assign=False).on("instructor_review"):
+        raise HTTPException(403, "Instructor feedback for bandit is disabled")
     f.instructor_rating = body.rating
     f.instructor_rated_at = now()
     if f.decision_id:

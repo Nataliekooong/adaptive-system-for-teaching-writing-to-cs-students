@@ -13,6 +13,7 @@ interface Revision {
   changes: { kind: "equal" | "delete" | "insert"; text: string }[];
 }
 interface Work {
+  grading_enabled: boolean;
   student: UserRef; draft: string; revisions: Revision[];
   bandit_rating: BanditRatingStatus | null;
   submission: { id: number; content: string; submitted_at: string; grade: string | null; comments: string; released: boolean } | null;
@@ -32,6 +33,7 @@ function ReviewPage({ aid, sid }: { aid: string; sid: string }) {
   const [page, setPage] = useState(0);
   const [showChanges, setShowChanges] = useState(true);
   const [grade, setGrade] = useState({ grade: "", comments: "" });
+  const [releaseOnSave, setReleaseOnSave] = useState(false);
   const [saving, setSaving] = useState(false);
   useEffect(() => {
     if (w.data?.submission) setGrade({ grade: w.data.submission.grade ?? "", comments: w.data.submission.comments });
@@ -49,9 +51,9 @@ function ReviewPage({ aid, sid }: { aid: string; sid: string }) {
     if (!submission || saving) return;
     setSaving(true);
     try {
-      await api.post(`/api/instructor/submissions/${submission.id}/grade`, grade);
-      if (release) await api.post(`/api/instructor/assignments/${aid}/release`, { submission_ids: [submission.id] });
-      toast(release ? "Overall grade saved and released" : submission.released ? "Released grade updated" : "Overall grade saved (not released)");
+      await api.post(`/api/instructor/submissions/${submission.id}/grade`, { ...grade, release });
+      toast(release ? "Overall grade saved and released" : "Overall grade saved (not released)");
+      setReleaseOnSave(false);
       w.reload();
     } catch (e) { toast((e as Error).message, true); }
     finally { setSaving(false); }
@@ -63,7 +65,7 @@ function ReviewPage({ aid, sid }: { aid: string; sid: string }) {
     ]} />
     <div className="content"><div className="page review-page">
       <Link className="review-back" to={reviewUrl}>{icons.back} All students</Link>
-      <PageHeader icon={icons.edit} title={student.display_name} />
+      <PageHeader title={student.display_name} sub="Writing revisions" />
       <div className="row wrap review-meta">
         <span className="muted">{a.data.title} · {student.username}</span>
         <Tag color={submission ? "green" : "yellow"}>{submission ? "Submitted" : "In progress"}</Tag>
@@ -104,7 +106,7 @@ function ReviewPage({ aid, sid }: { aid: string; sid: string }) {
           <div className="revision-document">
             <div className="revision-document-toolbar">
               <div><h2>{revision ? revision.is_submission ? "Final submission" : `Revision ${index + 1}` : "Current draft"}</h2>
-                <span className="muted small">{index === 0 ? "Initial writing ? No prior AI feedback" : `Compared with revision ${index}`} · {wordCount(text)} words</span>
+                <span className="muted small">{index === 0 ? "Initial writing · No prior AI feedback" : `Compared with revision ${index}`} · {wordCount(text)} words</span>
               </div>
               <label className="row small"><input type="checkbox" checked={showChanges} onChange={e => setShowChanges(e.target.checked)} />Show changes</label>
             </div>
@@ -120,9 +122,12 @@ function ReviewPage({ aid, sid }: { aid: string; sid: string }) {
               <button className="btn" disabled={!revision || index + 1 >= revisions.length} onClick={() => choose(index + 1)}>Later {icons.forward}</button>
             </div>
           </div>
-          <section className="review-grade" aria-label="Overall assignment grade">
+          {w.data.grading_enabled ? <section className="review-grade" aria-label="Overall assignment grade">
             <div className="row wrap"><h2>Overall assignment grade</h2><span className="spacer" />
-              {submission?.grade && <Tag color={submission.released ? "green" : "gray"}>{submission.released ? "Released" : "Not released"}</Tag>}
+              {submission && <div className="review-grade-status">
+                <Tag color={submission.released ? "green" : "gray"}>{submission.released ? "Released" : "Not released"}</Tag>
+                <label className="row small"><input type="checkbox" checked={releaseOnSave} disabled={saving} onChange={e => setReleaseOnSave(e.target.checked)} />Directly Release</label>
+              </div>}
             </div>
             <p className="muted small">One grade for the final submission, across all revisions.</p>
             {!submission ? <p className="muted">Grading opens after the student submits.</p> : <>
@@ -131,12 +136,12 @@ function ReviewPage({ aid, sid }: { aid: string; sid: string }) {
               <Field label="Student grade"><input id="overall-grade" className="input" maxLength={32} value={grade.grade} placeholder="e.g. 85 or A-" onChange={e => setGrade({ ...grade, grade: e.target.value })} /><span className="small muted">The student's assignment result. This does not train the bandit.</span></Field>
               <Field label="Overall comments"><textarea id="overall-comments" className="textarea" rows={4} value={grade.comments} placeholder="Feedback on the assignment as a whole…" onChange={e => setGrade({ ...grade, comments: e.target.value })} /></Field>
               <div className="form-actions wrap">
-                <button className="btn outline" disabled={!grade.grade.trim() || saving} onClick={() => saveGrade(false)}>{saving ? "Saving…" : "Save grade"}</button>
-                {!submission.released && <button className="btn primary" disabled={!grade.grade.trim() || saving} onClick={() => saveGrade(true)}>Save & release</button>}
+                <button className="btn primary" disabled={!grade.grade.trim() || saving} onClick={() => saveGrade(releaseOnSave)}>{saving ? releaseOnSave ? "Releasing…" : "Saving…" : releaseOnSave ? "Release" : "Save"}</button>
               </div>
-              {w.data.bandit_rating && <BanditRatingPanel key={submission.id} submissionId={submission.id} initial={w.data.bandit_rating} />}
+              <p className="small muted">{releaseOnSave ? "Release will save and publish this grade and comments to the student." : "Save will keep this grade private, including changes to a previously released grade. You can release saved grades together from the student list."}</p>
             </>}
-          </section>
+          </section> : <p className="muted small">Ungraded assignment · No grade is required.</p>}
+          {submission && w.data.bandit_rating && <BanditRatingPanel key={submission.id} submissionId={submission.id} initial={w.data.bandit_rating} />}
         </section>
       </div>
     </div></div>

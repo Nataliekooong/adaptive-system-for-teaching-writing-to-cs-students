@@ -3,7 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { api } from "../../api";
 import { fmtDate } from "../../config";
 import type { Assignment, Course, UserRef } from "../../types";
-import { Field, Loading, STATUS_COLORS, Tag, useLoad } from "../../ui";
+import { Field, Loading, STATUS_COLORS, Tag, useLoad, useToast } from "../../ui";
 
 interface ReviewStudent {
   student: UserRef; submission_id: number | null; status: string;
@@ -30,6 +30,8 @@ export function ReviewTab({ course }: { course: Course }) {
 }
 
 function StudentReviews({ assignment }: { assignment: Assignment }) {
+  const toast = useToast();
+  const [releasing, setReleasing] = useState(false);
   const rows = useLoad(() => api.get<ReviewStudent[]>(`/api/instructor/assignments/${assignment.id}/submissions`), [assignment.id]);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
@@ -37,13 +39,30 @@ function StudentReviews({ assignment }: { assignment: Assignment }) {
   const filtered = rows.data.filter(r => `${r.student.display_name} ${r.student.username}`.toLowerCase().includes(search.toLowerCase()));
   const pages = Math.max(1, Math.ceil(filtered.length / 10));
   const current = Math.min(page, pages - 1);
+  const releasable = rows.data.filter(r => r.submission_id !== null && r.grade && !r.released);
+  const releaseAll = async () => {
+    if (releasing || !releasable.length) return;
+    setReleasing(true);
+    try {
+      const result = await api.post<{ updated: number }>(`/api/instructor/assignments/${assignment.id}/release`, {
+        submission_ids: releasable.map(r => r.submission_id),
+      });
+      toast(`Released ${result.updated} grades`);
+      rows.reload();
+    } catch (e) { toast((e as Error).message, true); }
+    finally { setReleasing(false); }
+  };
   return <>
     <div className="row wrap review-list-tools">
       <span className="muted">{rows.data.length} assigned · {rows.data.filter(r => r.submission_id !== null).length} submitted</span>
       <span className="spacer" />
       <input className="input control-compact" aria-label="Search students" placeholder="Search students…" value={search} onChange={e => { setSearch(e.target.value); setPage(0); }} />
       <button className="btn outline" onClick={rows.reload}>Refresh</button>
+      <button className="btn primary" disabled={releasing || !releasable.length} onClick={releaseAll}>
+        {releasing ? "Releasing…" : `Release all grades (${releasable.length})`}
+      </button>
     </div>
+    <p className="small muted">Release all publishes every saved, unreleased grade for this assignment, including students outside the current search or page.</p>
     {rows.error && <div role="alert">{rows.error}</div>}
     <div className="review-table-wrap"><table className="table">
       <thead><tr><th>Student</th><th>MacID</th><th>Status</th><th>Submitted</th><th>Words</th><th>Grade</th><th>Review</th></tr></thead>

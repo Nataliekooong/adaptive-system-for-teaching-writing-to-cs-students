@@ -111,9 +111,9 @@ MODULES: list[Module] = [
     ),
     Module(
         key="instructor_review",
-        label="Instructor revision review",
+        label="Instructor feedback for bandit",
         category="Reward",
-        description="Instructor rates a random sample of feedback → revision pairs.",
+        description="Optionally use instructor feedback ratings to train the bandit. Independent of assignment grading.",
         default_enabled=True,
         srs_refs=["I9"],
         settings=[
@@ -196,6 +196,14 @@ MODULES: list[Module] = [
             Setting("min_words", "int", "Minimum words", 0, min=0, max=20000),
             Setting("min_paragraphs", "int", "Minimum paragraphs", 0, min=0, max=200),
         ],
+    ),
+    Module(
+        key="assignment_grading",
+        label="Assignment grading",
+        category="Workspace",
+        description="Allow instructors to grade and release assignment results. Disable for ungraded practice.",
+        default_enabled=True,
+        srs_refs=["I11"],
     ),
     Module(
         key="grades",

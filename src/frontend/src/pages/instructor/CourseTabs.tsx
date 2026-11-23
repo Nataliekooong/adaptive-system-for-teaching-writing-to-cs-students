@@ -18,7 +18,9 @@ export function AssignmentsTab({ course }: { course: Course }) {
   const { reloadCourses } = useInstructor();
   const rows = useLoad(() => api.get<AssignmentRow[]>(`/api/instructor/courses/${course.id}/assignments`), [course.id]);
   const [creating, setCreating] = useState(false);
-  const [form, setForm] = useState({ title: "", due_date: "", description: "" });
+  const [form, setForm] = useState({ title: "", due_date: "", description: "",
+    grading: course.config.assignment_grading?.enabled !== false,
+    instructorFeedback: course.config.instructor_review?.enabled !== false });
 
   const create = async () => {
     try {
@@ -26,6 +28,7 @@ export function AssignmentsTab({ course }: { course: Course }) {
         title: form.title, description: form.description,
         due_date: form.due_date ? new Date(form.due_date).toISOString() : null,
         rubric_areas: course.rubric_areas.slice(0, 3), assign_all: true,
+        config: { assignment_grading: { enabled: form.grading }, instructor_review: { enabled: form.instructorFeedback } },
       });
       reloadCourses();
       nav(`/i/assignments/${a.id}`);
@@ -72,6 +75,12 @@ export function AssignmentsTab({ course }: { course: Course }) {
           <Field label="Title"><input className="input" autoFocus value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} /></Field>
           <Field label="Description"><input className="input" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></Field>
           <Field label="Due date"><input className="input" type="datetime-local" value={form.due_date} onChange={(e) => setForm({ ...form, due_date: e.target.value })} /></Field>
+          <Field label="Assignment grading" hint="Turn off for ungraded practice. Students can still submit writing.">
+            <Switch on={form.grading} onChange={grading => setForm({ ...form, grading })} />
+          </Field>
+          <Field label="Instructor feedback for bandit" hint="Allow optional instructor ratings to train the bandit, independently of grades.">
+            <Switch on={form.instructorFeedback} onChange={instructorFeedback => setForm({ ...form, instructorFeedback })} />
+          </Field>
           <div className="faint small" style={{ marginBottom: 12 }}>All enrolled students are assigned. You can configure modules and students next.</div>
           <div className="form-actions"><button className="btn" onClick={() => setCreating(false)}>Cancel</button>
             <button className="btn primary" disabled={!form.title} onClick={create}>Create</button></div>
