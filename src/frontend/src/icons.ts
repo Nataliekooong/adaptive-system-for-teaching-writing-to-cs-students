@@ -26,7 +26,7 @@ const MODULE_ICONS: Record<string, string> = {
 
 /** S15 character mode: keys match the `feedback_presentation.character` options in app/modules.py. */
 export const CHARACTERS: Record<string, { emoji: string; name: string; hello: string }> = {
-  owl: { emoji: "🦉", name: "Amber", hello: "Hoo!" },
+  owl: { emoji: "🦉", name: "Ollie", hello: "Hoo!" },
   cat: { emoji: "🐱", name: "Whiskers", hello: "Meow!" },
   dog: { emoji: "🐶", name: "Biscuit", hello: "Woof!" },
   fox: { emoji: "🦊", name: "Maple", hello: "Hi there!" },
