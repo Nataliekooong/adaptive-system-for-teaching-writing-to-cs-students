@@ -99,6 +99,9 @@ MODULES: list[Module] = [
         srs_refs=["S15"],
         settings=[
             Setting("mode", "enum", "Display mode", "chat_panel", options=["chat_panel", "character"]),
+            Setting("character", "enum", "Character", "owl",
+                    help="Animal shown in the side panel when the display mode is character.",
+                    options=["owl", "cat", "dog", "fox", "panda", "rabbit"]),
         ],
     ),
     Module(

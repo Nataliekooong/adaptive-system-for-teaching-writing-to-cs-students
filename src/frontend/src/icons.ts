@@ -24,6 +24,20 @@ const MODULE_ICONS: Record<string, string> = {
   paste_control: icons.questionnaire, submission_rules: icons.rules, grades: icons.course, assignment_grading: icons.course,
 };
 
+/** S15 character mode: keys match the `feedback_presentation.character` options in app/modules.py. */
+export const CHARACTERS: Record<string, { emoji: string; name: string; hello: string }> = {
+  owl: { emoji: "🦉", name: "Amber", hello: "Hoo!" },
+  cat: { emoji: "🐱", name: "Whiskers", hello: "Meow!" },
+  dog: { emoji: "🐶", name: "Biscuit", hello: "Woof!" },
+  fox: { emoji: "🦊", name: "Maple", hello: "Hi there!" },
+  panda: { emoji: "🐼", name: "Bao", hello: "Hello!" },
+  rabbit: { emoji: "🐰", name: "Clover", hello: "Hey!" },
+};
+
+export function character(key: unknown) {
+  return CHARACTERS[String(key)] ?? CHARACTERS.owl;
+}
+
 export function moduleIcon(key: string): string {
   return MODULE_ICONS[key] ?? icons.modules;
 }
