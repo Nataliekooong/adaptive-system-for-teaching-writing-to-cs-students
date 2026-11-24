@@ -1,4 +1,4 @@
-import { icons } from "../../icons";
+import { character, icons } from "../../icons";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ClipboardEvent, type KeyboardEvent } from "react";
 import { useParams } from "react-router-dom";
 import { api, ApiError } from "../../api";
@@ -435,7 +435,7 @@ export default function Workspace() {
         {showPanel && panelOpen && (
           <aside className="ws-panel">
             <div className="ws-panel-head">
-              <span>{presentation === "character" ? icons.character : icons.feedback}</span> Feedback
+              <span>{presentation === "character" ? character(cfg.feedback_presentation.character).emoji : icons.feedback}</span> Feedback
               <span className="spacer" />
               <span className="faint small" style={{ fontWeight: 400 }}>{feedback.length} item{feedback.length === 1 ? "" : "s"}</span>
               <button className="icon-btn" onClick={() => setPanelOpen(false)}>{icons.close}</button>
@@ -443,7 +443,8 @@ export default function Workspace() {
             <div className="ws-panel-body">
               {busyFb && <div className="fb-card faint">{icons.template} Reading your draft…</div>}
               {presentation === "character"
-                ? <CharacterPanel items={feedback} canRate={canRate} onRate={rate} />
+                ? <CharacterPanel items={feedback} canRate={canRate} onRate={rate}
+                                  characterKey={cfg.feedback_presentation.character} />
                 : <ChatPanel items={feedback} canRate={canRate} onRate={rate} />}
             </div>
           </aside>

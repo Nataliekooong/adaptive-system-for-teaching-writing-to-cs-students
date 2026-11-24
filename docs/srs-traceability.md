@@ -24,7 +24,7 @@ Status: ✅ done · 🟡 partial · ⬜ not started. "Module" is the `app/module
 | S12 | Check minimum word / paragraph count before submission | P2 | ✅ | `submission_rules` | `/submit` |
 | S13 | View grade and comments after release | P1 | ✅ | `grades` | `submission_out(include_grade)` |
 | S14 | Detect paste; explain if disabled, otherwise log with surrounding versions | P2 | ✅ | `paste_control` | `/paste` |
-| S15 | Presentation per study group (chat panel / character) | P2 | ✅ | `feedback_presentation` | `FeedbackViews.tsx` |
+| S15 | Presentation per study group (chat panel / character; character animal selectable) | P2 | ✅ | `feedback_presentation` | `FeedbackViews.tsx`, `icons.ts` (`CHARACTERS`) |
 
 ## 7.2 Instructor view
 

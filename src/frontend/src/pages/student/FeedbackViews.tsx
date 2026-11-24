@@ -1,4 +1,4 @@
-import { icons } from "../../icons";
+import { character, icons } from "../../icons";
 import { useEffect, useRef } from "react";
 import { timeAgo } from "../../config";
 import type { Feedback } from "../../types";
@@ -60,16 +60,17 @@ export function ChatPanel({ items, canRate, onRate }: {
 }
 
 /** S15 condition "character with a speech bubble" */
-export function CharacterPanel({ items, canRate, onRate }: {
-  items: Feedback[]; canRate: boolean; onRate: (f: Feedback, h: boolean) => void;
+export function CharacterPanel({ items, canRate, onRate, characterKey }: {
+  items: Feedback[]; canRate: boolean; onRate: (f: Feedback, h: boolean) => void; characterKey?: unknown;
 }) {
   const [latest, ...rest] = items;
+  const ch = character(characterKey);
   return (
     <>
       <div className="character">
-        <div className="character-avatar">{icons.character}</div>
+        <div className="character-avatar" aria-label={ch.name}>{ch.emoji}</div>
         <div className="speech">
-          {latest ? <FeedbackBody fb={latest} /> : <span>Hoo! I'm Ollie. Ask me for feedback whenever you're ready.</span>}
+          {latest ? <FeedbackBody fb={latest} /> : <span>{ch.hello} I'm {ch.name}. Ask me for feedback whenever you're ready.</span>}
           {latest && canRate && <RateButtons fb={latest} onRate={(h) => onRate(latest, h)} />}
         </div>
       </div>

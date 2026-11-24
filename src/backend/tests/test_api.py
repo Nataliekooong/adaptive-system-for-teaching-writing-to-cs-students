@@ -482,6 +482,34 @@ def test_experiment_needs_two_conditions(client):
                         json={"status": "active"}).status_code == 422
 
 
+def test_character_avatar_setting(client):
+    """S15 character mode: instructor picks the animal; experiment conditions can vary it."""
+    inst, stu = login(client, "drlee"), login(client, "priya")
+    course, a = course_and_assignment(client, inst)
+    url = f"/api/student/assignments/{a['id']}"
+    assert client.get(url, headers=stu).json()["config"]["feedback_presentation"]["character"] == "owl"
+
+    r = client.patch(f"/api/instructor/assignments/{a['id']}", headers=inst, json={"config": {
+        "feedback_presentation": {"mode": "character", "character": "panda"}}})
+    assert r.status_code == 200
+    assert client.get(url, headers=stu).json()["config"]["feedback_presentation"]["character"] == "panda"
+    assert client.patch(f"/api/instructor/assignments/{a['id']}", headers=inst, json={"config": {
+        "feedback_presentation": {"character": "dragon"}}}).status_code == 422
+
+    e = client.post(f"/api/instructor/courses/{course['id']}/experiments", headers=inst, json={
+        "name": "avatars", "assignment_id": a["id"], "conditions": [
+            {"name": "fox", "config": {"feedback_presentation": {"character": "fox"}}},
+            {"name": "rabbit", "config": {"feedback_presentation": {"character": "rabbit"}}}]}).json()
+    client.patch(f"/api/instructor/experiments/{e['id']}", headers=inst, json={"status": "active"})
+    exp = client.post(f"/api/instructor/experiments/{e['id']}/assign", headers=inst, json={}).json()
+    parts = client.get(f"/api/instructor/experiments/{e['id']}/participants", headers=inst).json()
+    for p in parts:
+        cond = next(c for c in exp["conditions"] if c["id"] == p["condition_id"])
+        cfg = client.get(f"/api/instructor/assignments/{a['id']}/effective-config",
+                         params={"student_id": p["id"]}, headers=inst).json()
+        assert cfg["config"]["feedback_presentation"]["character"] == cond["name"]
+
+
 # ---------------------------------------------------------------- reward & bandit
 
 def _decision_for(feedback_id):
