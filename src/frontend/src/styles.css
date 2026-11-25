@@ -39,6 +39,7 @@ a { color: inherit; text-decoration: none; }
 .sb-item {
   display: flex; align-items: center; gap: 8px; padding: 4px 8px; min-height: 28px; border-radius: 6px;
   color: var(--text-2); cursor: pointer; font-weight: 500; white-space: nowrap; overflow: hidden; user-select: none;
+  width: 100%; border: none; background: transparent; text-align: left;
 }
 .sb-item:hover { background: var(--hover); }
 .sb-item.active { background: var(--blue-bg); color: var(--blue); }
@@ -52,6 +53,7 @@ a { color: inherit; text-decoration: none; }
 .topbar {
   min-height: 48px; flex-shrink: 0; display: flex; align-items: center; gap: var(--space-2); padding: 6px 12px; flex-wrap: wrap;
 }
+.theme-switch { display: flex; align-items: center; gap: var(--space-2); color: var(--text-2); font-size: var(--font-size-label); font-weight: 500; }
 .crumbs { display: flex; align-items: center; gap: 2px; min-width: 0; flex: 1; }
 .crumb {
   padding: 2px 6px; border-radius: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -285,12 +287,13 @@ h3.h { font-size: var(--font-size-heading-small); font-weight: 600; margin: 20px
 
 /* toast */
 .toasts { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 80; display: flex; flex-direction: column; gap: 8px; align-items: center; }
-.toast { background: var(--toast-bg); color: var(--surface); padding: 8px 14px; border-radius: 8px; box-shadow: var(--pop-shadow); font-size: var(--font-size-body); max-width: 520px; }
+.toast { background: var(--toast-bg); color: var(--toast-text); padding: 8px 14px; border-radius: 8px; box-shadow: var(--pop-shadow); font-size: var(--font-size-body); max-width: 520px; }
 .toast.error { background: var(--toast-error-bg); }
 
 /* login */
 .login-wrap { min-height: 100vh; display: grid; place-items: center; background: var(--surface); }
 .login-box { width: 320px; }
+.login-theme-toggle { float: right; margin-bottom: var(--space-4); }
 .login-title { font-size: var(--font-size-dialog); font-weight: 700; margin: 0 0 var(--space-1); }
 .demo-users { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; }
 .demo-user { text-align: left; padding: 8px 10px; border-radius: 6px; box-shadow: var(--card-shadow); background: var(--surface); border: none; cursor: pointer; }

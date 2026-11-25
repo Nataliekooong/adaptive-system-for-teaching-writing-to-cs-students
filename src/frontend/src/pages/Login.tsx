@@ -3,6 +3,7 @@ import { Field } from "../ui";
 import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth";
+import { ThemeToggle } from "../theme";
 
 // Seeded demo accounts (src/backend/app/seed.py). Replaced by McMaster SSO later.
 const DEMO = [
@@ -41,6 +42,7 @@ export default function Login() {
   return (
     <div className="login-wrap">
       <div className="login-box">
+        <ThemeToggle className="btn outline login-theme-toggle" />
         <div className="dialog-icon" aria-hidden="true">{icons.writing}</div>
         <h1 className="login-title">Adaptive Writing Tutor</h1>
         <div className="muted" style={{ marginBottom: 24 }}>Sign in with your McMaster account</div>

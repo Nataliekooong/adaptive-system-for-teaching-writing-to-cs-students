@@ -43,6 +43,7 @@
   --switch-off: #a8a7a3;
   --overlay: rgba(15, 15, 15, 0.4);
   --toast-bg: #2f2f2f;
+  --toast-text: #ffffff;
   --toast-error-bg: #a52c28;
   --callout-blue: #e7f3f8;
   --callout-yellow: #fbf3db;
@@ -97,4 +98,61 @@
   --icon-size-caret: 10px;
   --icon-size-page: 40px;
   --icon-size-character: 52px;
+}
+
+/* Dark mode changes color tokens only; component styles remain theme-agnostic. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --text: #e8e7e3;
+  --text-2: #bbb9b4;
+  --text-3: #96948e;
+  --bg: var(--surface);
+  --sidebar: #202020;
+  --hover: rgba(255, 255, 255, 0.06);
+  --active: rgba(255, 255, 255, 0.1);
+  --border: rgba(255, 255, 255, 0.1);
+  --border-2: rgba(255, 255, 255, 0.18);
+  --blue: #70aee9;
+  --blue-hover: #8bbced;
+  --blue-bg: rgba(112, 174, 233, 0.14);
+  --red: #ef8580;
+  --card-shadow: rgba(0, 0, 0, 0.32) 0 0 0 1px, rgba(0, 0, 0, 0.28) 0 2px 5px;
+  --pop-shadow: rgba(0, 0, 0, 0.38) 0 0 0 1px, rgba(0, 0, 0, 0.28) 0 4px 8px, rgba(0, 0, 0, 0.5) 0 12px 30px;
+
+  --gray-bg: #383838;   --gray-tx: #ecebe7;   --gray-dot: #aaa8a2;
+  --brown-bg: #44342d;  --brown-tx: #ead4c8;
+  --orange-bg: #4a3423; --orange-tx: #f2c79d; --orange-dot: #dd934d;
+  --yellow-bg: #484025; --yellow-tx: #f2dca0; --yellow-dot: #d3ae59;
+  --green-bg: #293e32;  --green-tx: #bce2c9;  --green-dot: #6db98d;
+  --blue-tag-bg: #273f52; --blue-tx: #c1dcf0; --blue-dot: #72b2dc;
+  --purple-bg: #3d3147; --purple-tx: #dec8eb; --purple-dot: #b58ad0;
+  --pink-bg: #4a303d;   --pink-tx: #f0c6d9;
+  --red-bg: #4d2c2e;    --red-tx: #f2c1be;    --red-dot: #e17a75;
+
+  --surface: #191919;
+  --surface-hover: #222222;
+  --control-bg: #202020;
+  --on-accent: #10202d;
+  --selection: rgba(112, 174, 233, 0.35);
+  --focus-ring: rgba(112, 174, 233, 0.25);
+  --switch-off: #66645f;
+  --overlay: rgba(0, 0, 0, 0.68);
+  --toast-bg: #e7e6e2;
+  --toast-text: #222222;
+  --toast-error-bg: #b4433f;
+  --callout-blue: #203541;
+  --callout-yellow: #3d3825;
+  --callout-red: #40292b;
+  --callout-green: #28372b;
+  --highlight-bg: rgba(222, 174, 40, 0.3);
+  --highlight-border: #d1a936;
+  --highlight-note-bg: #3b3724;
+  --diff-removed-text: #f0a3aa;
+  --diff-removed-bg: #44282c;
+  --diff-added-text: #9ad4ae;
+  --diff-added-bg: #233b2b;
+  --diff-added-underline: #70b188;
+  --control-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --switch-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  --speech-shadow: -2px 2px 3px rgba(0, 0, 0, 0.28);
 }

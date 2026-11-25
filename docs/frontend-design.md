@@ -1,11 +1,13 @@
 # Frontend UI conventions
 
-The app uses a shared white theme, native controls, and the existing React UI primitives. No UI library or icon
-package is needed.
+The app uses shared light and dark themes, native controls, and the existing React UI primitives. No UI library or
+icon package is needed. The first visit follows the operating-system color preference; the sidebar and login-page
+toggle save an explicit choice in local storage.
 
 | File | Responsibility |
 | --- | --- |
-| `src/frontend/src/theme.css` | All literal colors, semantic accents, shared control heights, typography, spacing, and panel dimensions |
+| `src/frontend/src/theme.css` | All literal light/dark colors, semantic accents, shared control heights, typography, spacing, and panel dimensions |
+| `src/frontend/src/theme.tsx` | Persistent theme state and the shared theme toggle |
 | `src/frontend/src/styles.css` | Component appearance and layout using theme variables |
 | `src/frontend/src/ui.tsx` | Shared behavior: fields, ratings, switches, segmented choices, tabs, dialogs, tags, and callouts |
 | `src/frontend/src/icons.ts` | Named icon glyphs, assignment status icons, and the module-to-icon mapping |

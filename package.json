@@ -1,0 +1,11 @@
+{
+  "name": "adaptive-system-for-teaching-writing-to-cs-students",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "dev:frontend": "npm --prefix src/frontend run dev",
+    "build": "npm --prefix src/frontend run build",
+    "test": "npm --prefix src/frontend run typecheck"
+  }
+}

@@ -4,6 +4,7 @@ import { useAuth } from "../../auth";
 import { fmtDate } from "../../config";
 import { Board, PageHeader, Tag, Topbar } from "../../ui";
 import { useStudentCtx, type StudentAssignment } from "./StudentLayout";
+import { ThemeSwitch } from "../../theme";
 
 export default function StudentHome() {
   const { me } = useAuth();
@@ -12,7 +13,7 @@ export default function StudentHome() {
   const col = (s: StudentAssignment["status"]) => assignments.filter((a) => a.status === s);
   return (
     <>
-      <Topbar onToggleSidebar={toggleSidebar} crumbs={[{ label: "Home", icon: icons.home }]} />
+      <Topbar onToggleSidebar={toggleSidebar} crumbs={[{ label: "Home", icon: icons.home }]} right={<ThemeSwitch />} />
       <div className="content">
         <div className="page wide">
           <PageHeader icon={icons.library} title={`Hi, ${me!.display_name.split(" ")[0]}`} sub="Your writing assignments" />

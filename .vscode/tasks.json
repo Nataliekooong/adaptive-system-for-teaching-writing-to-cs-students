@@ -1,0 +1,91 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Setup: frontend",
+      "type": "shell",
+      "command": "npm.cmd ci",
+      "options": { "cwd": "${workspaceFolder}/src/frontend" },
+      "problemMatcher": []
+    },
+    {
+      "label": "Setup: backend",
+      "type": "shell",
+      "command": "if (!(Test-Path .venv)) { python -m venv .venv }; .\\.venv\\Scripts\\python.exe -m pip install -r requirements-dev.txt",
+      "options": { "cwd": "${workspaceFolder}/src/backend" },
+      "problemMatcher": []
+    },
+    {
+      "label": "Setup: all dependencies",
+      "dependsOn": ["Setup: frontend", "Setup: backend"],
+      "dependsOrder": "parallel",
+      "problemMatcher": []
+    },
+    {
+      "label": "Run: frontend",
+      "type": "shell",
+      "command": "npm.cmd run dev -- --host 127.0.0.1 --strictPort",
+      "options": { "cwd": "${workspaceFolder}/src/frontend" },
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "vite",
+        "pattern": {
+          "regexp": "^(?!)$",
+          "file": 1,
+          "location": 2,
+          "message": 3
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".*VITE.*ready.*",
+          "endsPattern": ".*Local:.*http://127\\.0\\.0\\.1:5173.*"
+        }
+      },
+      "presentation": { "panel": "dedicated", "group": "app" }
+    },
+    {
+      "label": "Run: backend",
+      "type": "shell",
+      "command": ".\\.venv\\Scripts\\python.exe -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000",
+      "options": { "cwd": "${workspaceFolder}/src/backend" },
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "uvicorn",
+        "pattern": {
+          "regexp": "^(?!)$",
+          "file": 1,
+          "location": 2,
+          "message": 3
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".*Uvicorn running.*",
+          "endsPattern": ".*Application startup complete.*"
+        }
+      },
+      "presentation": { "panel": "dedicated", "group": "app" }
+    },
+    {
+      "label": "Run: full app",
+      "dependsOn": ["Run: backend", "Run: frontend"],
+      "dependsOrder": "parallel",
+      "problemMatcher": []
+    },
+    {
+      "label": "Check: frontend",
+      "type": "shell",
+      "command": "npm.cmd run build",
+      "options": { "cwd": "${workspaceFolder}/src/frontend" },
+      "group": { "kind": "build", "isDefault": true },
+      "problemMatcher": ["$tsc"]
+    },
+    {
+      "label": "Check: backend",
+      "type": "shell",
+      "command": ".\\.venv\\Scripts\\python.exe -m pytest -q",
+      "options": { "cwd": "${workspaceFolder}/src/backend" },
+      "group": "test",
+      "problemMatcher": []
+    }
+  ]
+}

@@ -5,6 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✍️</text></svg>" />
     <title>Writing Tutor</title>
+    <script>
+      (() => {
+        const saved = localStorage.getItem("writing-tutor-theme");
+        document.documentElement.dataset.theme = saved === "light" || saved === "dark"
+          ? saved
+          : matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

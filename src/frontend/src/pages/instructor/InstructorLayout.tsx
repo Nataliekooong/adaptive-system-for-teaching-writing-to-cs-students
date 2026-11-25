@@ -5,6 +5,7 @@ import { api } from "../../api";
 import { useAuth } from "../../auth";
 import type { Course, Registry } from "../../types";
 import { Loading, useLoad } from "../../ui";
+import { ThemeToggle } from "../../theme";
 
 interface Ctx {
   toggleSidebar: () => void;
@@ -88,6 +89,7 @@ export default function InstructorLayout() {
             })}
           </div>
           <div className="sb-footer">
+            <ThemeToggle className="sb-item theme-toggle" />
             <div className="sb-item" onClick={() => logout().then(() => nav("/login"))}>
               <span className="ico">{icons.logout}</span><span className="label">Log out</span>
             </div>

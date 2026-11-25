@@ -5,6 +5,7 @@ import { api } from "../../api";
 import { useAuth } from "../../auth";
 import { Field, Callout, Modal, PageHeader, Tag, Topbar, useToast } from "../../ui";
 import { useInstructor } from "./InstructorLayout";
+import { ThemeSwitch } from "../../theme";
 
 export default function InstructorHome() {
   const { me } = useAuth();
@@ -30,7 +31,7 @@ export default function InstructorHome() {
 
   return (
     <>
-      <Topbar onToggleSidebar={toggleSidebar} crumbs={[{ label: "Home", icon: icons.home }]} />
+      <Topbar onToggleSidebar={toggleSidebar} crumbs={[{ label: "Home", icon: icons.home }]} right={<ThemeSwitch />} />
       <div className="content">
         <div className="page wide">
           <PageHeader icon={icons.instructor} title={`Good to see you, ${me!.display_name}`} sub="Your courses, assignments and experiments" />

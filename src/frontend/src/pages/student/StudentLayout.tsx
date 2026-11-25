@@ -6,6 +6,7 @@ import { useAuth } from "../../auth";
 import type { Assignment } from "../../types";
 import { useLoad } from "../../ui";
 import Questionnaire from "./Questionnaire";
+import { ThemeToggle } from "../../theme";
 
 export type StudentAssignment = Assignment & { course_code: string; status: "in_progress" | "submitted" | "graded" };
 
@@ -63,6 +64,7 @@ export default function StudentLayout() {
             ))}
           </div>
           <div className="sb-footer">
+            <ThemeToggle className="sb-item theme-toggle" />
             <div className="sb-item" onClick={() => logout().then(() => nav("/login"))}>
               <span className="ico">{icons.logout}</span><span className="label">Log out</span>
             </div>

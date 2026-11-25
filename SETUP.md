@@ -42,6 +42,23 @@ and chat panel vs character.
 
 ## Run locally
 
+After completing the one-time dependency setup below, the shortest way to start the entire app from the repository
+root is:
+
+```powershell
+npm run dev
+```
+
+This starts the backend on http://127.0.0.1:8000 and the frontend on http://127.0.0.1:5173. Press `Ctrl+C` once to
+stop both servers.
+
+### VS Code quick start
+
+Open the repository folder in VS Code, then run **Tasks: Run Task** → **Setup: all dependencies** once. Start both
+development servers with **Tasks: Run Task** → **Run: full app** and open http://localhost:5173. The workspace
+settings select the project virtual environment automatically, and the recommended Python extensions provide
+language support and test discovery.
+
 ### Requirements
 
 - **Node.js + npm** for the frontend. Node 22.15.0 and npm 10.9.2 are installed on this Windows machine.
