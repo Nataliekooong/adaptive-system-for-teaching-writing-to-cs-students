@@ -202,6 +202,15 @@ export default function Workspace() {
     }
   };
 
+  const score = async (f: Feedback, value: number) => {
+    try {
+      const upd = await api.post<Feedback>(`/api/student/feedback/${f.id}/score`, { score: value });
+      setFeedback((xs) => xs.map((x) => (x.id === f.id ? upd : x)));
+    } catch (e) {
+      toast((e as Error).message, true);
+    }
+  };
+
   const fireRealtime = useCallback(async (trigger: Trigger, excerpt: string) => {
     if (rt) return;
     try {
@@ -290,6 +299,7 @@ export default function Workspace() {
   const minParas = rules.enabled ? (rules.min_paragraphs as number) : 0;
   const showPanel = cfg.on_demand_feedback.enabled || cfg.realtime_feedback.enabled;
   const canRate = cfg.student_rating.enabled;
+  const act = { canRate, onRate: rate, canScore: cfg.student_score.enabled, onScore: score };
   const presentation = cfg.feedback_presentation.enabled ? String(cfg.feedback_presentation.mode) : "chat_panel";
   const rtMode = String(cfg.realtime_feedback.presentation);
   const canUndo = hist.current.idx > 0;
@@ -443,8 +453,8 @@ export default function Workspace() {
             <div className="ws-panel-body">
               {busyFb && <div className="fb-card faint">{icons.template} Reading your draft…</div>}
               {presentation === "character"
-                ? <CharacterPanel items={feedback} canRate={canRate} onRate={rate} />
-                : <ChatPanel items={feedback} canRate={canRate} onRate={rate} />}
+                ? <CharacterPanel items={feedback} act={act} />
+                : <ChatPanel items={feedback} act={act} />}
             </div>
           </aside>
         )}

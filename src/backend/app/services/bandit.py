@@ -1,19 +1,21 @@
 """Contextual Thompson-Sampling bandit over feedback styles (MAB3–MAB7) and reward logic.
 
 Arms are (course, context_key, style) Beta posteriors. Context comes from the learner model.
-Rewards arrive asynchronously (student rating, instructor rating); `refresh_reward` decides
-when a decision's reward is final, and `apply_finalized` folds finalized rewards into the
-posteriors (the scheduled update, MAB7).
+Reward (MAB6): the student's 1–5 score on the feedback is the primary signal. The first score
+opens a window (`window_hours`); an instructor rating that arrives before it closes adds weight b.
+When the window closes the reward is final. No score before the due date / submission → skipped.
+Instructor ratings after that are archived only. The 👍/👎 helpfulness rating is research data
+and never enters the reward. `apply_finalized` folds final rewards into the posteriors (MAB7).
 """
 from __future__ import annotations
 
 import random
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..models import BanditArmState, BanditDecision, now
+from ..models import Assignment, BanditArmState, BanditDecision, Submission, now
 
 MC_SAMPLES = 500
 
@@ -52,56 +54,95 @@ def select_style(
         return (fixed if fixed in arms else arms[0]), 1.0, "fixed"
 
 
-def refresh_reward(d: BanditDecision) -> None:
-    """Recompute reward status from available signals and the reward config snapshot."""
+def _deadline(db: Session, d: BanditDecision) -> datetime | None:
+    """Last moment a first student score can still count: assignment due date or the student's
+    submission, whichever comes first. None = neither exists yet."""
+    a = db.get(Assignment, d.assignment_id)
+    sub = db.scalar(select(Submission.submitted_at).where(
+        Submission.assignment_id == d.assignment_id, Submission.student_id == d.student_id))
+    times = [t for t in (a.due_date if a else None, sub) if t is not None]
+    return min(times) if times else None
+
+
+def window_closes_at(d: BanditDecision) -> datetime | None:
+    if d.student_scored_at is None:
+        return None
+    hours = float((d.reward_config or {}).get("window_hours", 24))
+    return d.student_scored_at + timedelta(hours=hours)
+
+
+def refresh_reward(db: Session, d: BanditDecision) -> None:
+    """MAB6: the student 1–5 score is the reward; an instructor rating that arrives before the
+    window closes adds weight b. Pending → final once the window (opened by the first student
+    score) closes; pending → skipped when no score arrived before the deadline."""
     if d.reward_status != "pending":
         return
     cfg = d.reward_config or {}
-    instructor_review_on = cfg.get("instructor_review_enabled", True)
     if not cfg.get("enabled", True):
-        d.reward_status = "skipped"
-        d.reward_formula = "reward module disabled"
+        _skip(d, "reward module disabled")
         return
-    mode = cfg.get("mode", "combined")
-    a = float(cfg.get("student_weight", 0.5))
-    timeout = timedelta(hours=float(cfg.get("instructor_timeout_hours", 72)))
-    timed_out = now() - d.created_at >= timeout or not instructor_review_on
-    s, i = d.student_score, d.instructor_score
-    reward, formula = None, ""
-    if mode == "student_only":
-        if s is not None:
-            reward, formula = s, "student only"
-    elif mode == "instructor_only":
-        if i is not None:
-            reward, formula = i, "instructor only"
-        elif timed_out and s is not None:
-            reward, formula = s, "instructor timeout → student fallback"
+    if not cfg.get("student_score_enabled", True):
+        _skip(d, "student score disabled")
+        return
+    t = now()
+    deadline = _deadline(db, d)
+    if d.student_score is None or (deadline is not None and d.student_scored_at > deadline):
+        if deadline is not None and t >= deadline:
+            _skip(d, "no student score before deadline")
+        return
+    if t < window_closes_at(d):
+        return
+    b = float(cfg.get("instructor_weight", 0.2)) if cfg.get("instructor_review_enabled", True) else 0.0
+    if d.instructor_score is not None and b > 0:
+        d.reward = round((1 - b) * d.student_score + b * d.instructor_score, 4)
+        d.reward_formula = f"{1 - b:g}×student + {b:g}×instructor"
+        d.instructor_counted = True
     else:
-        if s is not None and i is not None:
-            reward, formula = a * s + (1 - a) * i, f"{a:g}×student + {1 - a:g}×instructor"
-        elif s is None and i is not None and timed_out:
-            reward, formula = i, "no student rating → instructor only"
-        elif s is not None and timed_out:
-            fa = float(cfg.get("fallback_student_weight", 1.0))
-            # remaining weight goes to a neutral prior of 0.5
-            reward = fa * s + (1 - fa) * 0.5
-            formula = f"instructor timeout → {fa:g}×student + {1 - fa:g}×0.5"
-    if reward is not None:
-        d.reward = round(reward, 4)
-        d.reward_formula = formula
-        d.reward_status = "final"
-        d.finalized_at = now()
+        d.reward = round(d.student_score, 4)
+        d.reward_formula = "student score"
+    d.reward_status = "final"
+    d.finalized_at = t
+
+
+def _skip(d: BanditDecision, reason: str) -> None:
+    d.reward_status = "skipped"
+    d.reward_formula = reason
+    d.finalized_at = now()
+
+
+def record_student_score(db: Session, d: BanditDecision, score: int) -> bool:
+    """Returns True when the score counts toward the reward (the decision was still pending).
+    The first score opens the window; re-scores inside it replace the value (latest wins)."""
+    refresh_reward(db, d)  # close an expired window / passed deadline before accepting the score
+    if d.reward_status != "pending":
+        return False
+    if d.student_scored_at is None:
+        d.student_scored_at = now()
+    d.student_score = normalize_score(score)
+    refresh_reward(db, d)
+    return True
+
+
+def record_instructor_score(db: Session, d: BanditDecision, rating: int) -> bool:
+    """Returns True when the rating can still enter the reward. Otherwise it is stored for
+    MAB8 offline evaluation and M5 only (`instructor_counted` stays False)."""
+    refresh_reward(db, d)
+    d.instructor_score = normalize_score(rating)
+    if d.reward_status != "pending":
+        return False
+    refresh_reward(db, d)
+    return True
 
 
 def apply_finalized(db: Session, course_id: int | None = None, dry_run: bool = False) -> list[dict]:
     """MAB7 scheduled update. With dry_run=True returns the preview without changing anything."""
-    q = select(BanditDecision).where(BanditDecision.applied.is_(False), BanditDecision.policy == "bandit")
+    q = select(BanditDecision).where(BanditDecision.applied.is_(False))
     if course_id is not None:
         q = q.where(BanditDecision.course_id == course_id)
     pending = db.scalars(q).all()
-    for d in pending:
-        refresh_reward(d)
-    finals = [d for d in pending if d.reward_status == "final"]
+    for d in pending:  # every policy is finalized, so random / fixed baselines get rewards too
+        refresh_reward(db, d)
+    finals = [d for d in pending if d.reward_status == "final" and d.policy == "bandit"]
     deltas: dict[tuple, dict] = {}
     for d in finals:
         k = (d.course_id, d.context_key, d.arm)
@@ -124,9 +165,6 @@ def apply_finalized(db: Session, course_id: int | None = None, dry_run: bool = F
     return list(deltas.values())
 
 
-def student_score(helpful: bool | None) -> float | None:
-    return None if helpful is None else (1.0 if helpful else 0.0)
-
-
-def instructor_score(rating: int | None) -> float | None:
-    return None if rating is None else (rating - 1) / 4
+def normalize_score(score: int) -> float:
+    """1..5 → 0..1 (student score and instructor rating use the same scale)."""
+    return (score - 1) / 4

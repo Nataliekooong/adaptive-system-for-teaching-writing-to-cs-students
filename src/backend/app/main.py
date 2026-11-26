@@ -16,7 +16,7 @@ BANDIT_UPDATE_SECONDS = int(os.getenv("BANDIT_UPDATE_SECONDS", "600"))
 
 
 async def _bandit_scheduler():
-    """MAB7: periodically fold finalized rewards (incl. instructor-timeout fallbacks) into the bandit."""
+    """MAB7: periodically close expired reward windows and fold final rewards into the bandit."""
     while True:
         await asyncio.sleep(BANDIT_UPDATE_SECONDS)
         with SessionLocal() as db:

@@ -199,11 +199,13 @@ class BanditDecision(Base):
     arm: Mapped[str] = mapped_column(String(32))
     probability: Mapped[float] = mapped_column(Float)
     reward_config: Mapped[dict] = mapped_column(JSON, default=dict)  # snapshot of reward module at decision time
-    student_score: Mapped[float | None] = mapped_column(Float, nullable=True)
-    instructor_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    student_score: Mapped[float | None] = mapped_column(Float, nullable=True)  # latest 1–5 score → 0..1
+    student_scored_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)  # first score: window start
+    instructor_score: Mapped[float | None] = mapped_column(Float, nullable=True)  # 1–5 → 0..1
+    instructor_counted: Mapped[bool] = mapped_column(Boolean, default=False)  # False = archived only (MAB8, M5)
     reward: Mapped[float | None] = mapped_column(Float, nullable=True)
     reward_status: Mapped[str] = mapped_column(String(16), default="pending")  # pending|final|skipped
-    reward_formula: Mapped[str] = mapped_column(String(128), default="")
+    reward_formula: Mapped[str] = mapped_column(String(128), default="")  # formula, or skip reason
     applied: Mapped[bool] = mapped_column(Boolean, default=False)  # folded into arm posteriors yet?
     created_at: Mapped[datetime] = mapped_column(DateTime, default=now)
     finalized_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
@@ -238,7 +240,9 @@ class FeedbackItem(Base):
     model_version: Mapped[str] = mapped_column(String(64))
     prompt_template: Mapped[str] = mapped_column(String(64))
     guardrail_status: Mapped[str] = mapped_column(String(16), default="approved")  # approved|rewritten|blocked
-    student_helpful: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    student_helpful: Mapped[bool | None] = mapped_column(Boolean, nullable=True)  # 👍/👎, research only (S11)
+    student_score: Mapped[int | None] = mapped_column(Integer, nullable=True)  # 1..5, bandit reward (MAB6)
+    student_scored_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     instructor_rating: Mapped[int | None] = mapped_column(Integer, nullable=True)  # 1..5
     instructor_rated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     dismissed: Mapped[bool] = mapped_column(Boolean, default=False)

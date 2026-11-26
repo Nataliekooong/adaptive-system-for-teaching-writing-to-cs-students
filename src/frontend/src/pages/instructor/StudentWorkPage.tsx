@@ -176,10 +176,10 @@ function BanditRatingPanel({ submissionId, initial }: { submissionId: number; in
     <p className="small muted">How helpful was the AI feedback across this assignment? This instructor-only rating is separate from the student's grade.</p>
     <RatingScale label="AI feedback helpfulness" value={rating} onChange={setRating}
       low="Not helpful" high="Very helpful" disabled={locked || saving || status.eligible_decisions === 0} />
-    {locked ? <p className="small" role="status">Recorded: {status.rating}/5 for {status.rated_decisions} feedback decisions. Rewards follow the configured student/instructor weighting and scheduled bandit updates.</p>
-      : status.eligible_decisions === 0 ? <p className="muted small">No pending bandit decisions can receive this rating. Feedback may not use the bandit, instructor rewards may be disabled, or rewards may already be finalized.</p>
+    {locked ? <p className="small" role="status">Recorded: {status.rating}/5 for {status.rated_decisions} feedback decisions. It adds to the reward only where the student's scoring window is still open; otherwise it is kept for evaluation.</p>
+      : status.eligible_decisions === 0 ? <p className="muted small">No bandit decisions can receive this rating. Feedback may not use the bandit, or instructor rewards may be disabled.</p>
       : <>
-        <p className="small muted">One shared rating for {status.eligible_decisions} pending feedback decisions. Once recorded, it cannot be changed. Saving a student grade does not save this rating.</p>
+        <p className="small muted">One shared rating for {status.eligible_decisions} feedback decisions. It is supplementary: it counts (weight b) only while the student's scoring window is open. Once recorded, it cannot be changed. Saving a student grade does not save this rating.</p>
         <button className="btn outline" disabled={rating === null || saving} onClick={save}>{saving ? "Recording…" : "Record bandit rating"}</button>
       </>}
   </section>;

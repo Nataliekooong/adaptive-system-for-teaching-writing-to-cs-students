@@ -14,7 +14,8 @@ type Participant = UserRef & { condition_id: number | null; assigned_by: string 
 
 interface Result {
   condition_id: number; name: string; students: number; on_demand_requests: number; realtime_popups: number;
-  dismissed: number; helpful_rate: number | null; mean_instructor_rating: number | null; mean_reward: number | null;
+  dismissed: number; helpful_rate: number | null; mean_student_score: number | null; scored_rate: number | null;
+  skipped_rewards: number; mean_instructor_rating: number | null; mean_reward: number | null;
   final_rewards: number; submissions: number; mean_words: number | null; mean_grade: number | null;
 }
 
@@ -305,9 +306,12 @@ function ResultsPanel({ e }: { e: Experiment }) {
     [(icons.feedback + " On-demand requests"), (x) => String(x.on_demand_requests)],
     [(icons.realtime + " Real-time pop-ups"), (x) => String(x.realtime_popups)],
     [(icons.hidden + " Pop-ups dismissed"), (x) => String(x.dismissed)],
+    [(icons.review + " Mean student score (1–5)"), (x) => num(x.mean_student_score)],
+    [(icons.review + " On-demand feedback scored"), (x) => pct(x.scored_rate)],
     [(icons.helpful + " Student helpful rate"), (x) => pct(x.helpful_rate)],
     [(icons.instructor + " Mean instructor rating (1–5)"), (x) => num(x.mean_instructor_rating)],
     [(icons.target + " Mean bandit reward"), (x) => `${num(x.mean_reward)} (n=${x.final_rewards})`],
+    [(icons.paused + " Skipped rewards (no student score)"), (x) => String(x.skipped_rewards)],
     [(icons.submissions + " Submissions"), (x) => String(x.submissions)],
     [(icons.rules + " Mean words submitted"), (x) => num(x.mean_words, 0)],
     [(icons.course + " Mean grade"), (x) => num(x.mean_grade)],

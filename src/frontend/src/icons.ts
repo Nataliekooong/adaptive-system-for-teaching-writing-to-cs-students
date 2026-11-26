@@ -18,7 +18,7 @@ export const icons = {
 
 const MODULE_ICONS: Record<string, string> = {
   on_demand_feedback: icons.feedback, realtime_feedback: icons.realtime,
-  feedback_presentation: icons.presentation, student_rating: icons.helpful,
+  feedback_presentation: icons.presentation, student_rating: icons.helpful, student_score: icons.review,
   instructor_review: icons.instructor, reward: icons.target, learner_model: icons.learner,
   questionnaire: icons.questionnaire, get_started: icons.getStarted, version_history: icons.history,
   paste_control: icons.questionnaire, submission_rules: icons.rules, grades: icons.course, assignment_grading: icons.course,

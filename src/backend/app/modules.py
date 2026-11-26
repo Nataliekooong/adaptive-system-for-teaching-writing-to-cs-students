@@ -46,7 +46,7 @@ MODULES: list[Module] = [
         label="On-demand AI feedback",
         category="Feedback venues",
         description="Student clicks “Request Feedback” → MAB picks a style → SLM → feedback panel. "
-        "Student revises, ratings flow back as reward.",
+        "Student scores flow back as reward.",
         default_enabled=True,
         srs_refs=["S8", "B5", "MAB3", "MAB4"],
         settings=[
@@ -102,18 +102,31 @@ MODULES: list[Module] = [
         ],
     ),
     Module(
-        key="student_rating",
-        label="Student helpfulness rating",
+        key="student_score",
+        label="Student feedback score (1–5)",
         category="Reward",
-        description="Students optionally rate feedback helpful / unhelpful.",
+        description="Students optionally score each on-demand feedback from 1 to 5. "
+        "This score is the bandit reward.",
         default_enabled=True,
+        srs_refs=["MAB6"],
+        depends_on=["on_demand_feedback"],
+    ),
+    Module(
+        key="student_rating",
+        label="Student helpfulness rating (👍/👎)",
+        category="Reward",
+        description="Students optionally mark feedback helpful / unhelpful. Research data only; "
+        "not part of the bandit reward.",
+        default_enabled=False,
         srs_refs=["S11"],
     ),
     Module(
         key="instructor_review",
         label="Instructor feedback for bandit",
         category="Reward",
-        description="Optionally use instructor feedback ratings to train the bandit. Independent of assignment grading.",
+        description="Optional, supplementary instructor rating of feedback. Counts toward the reward only "
+        "if it arrives before the student's window closes; later ratings are kept for evaluation. "
+        "Independent of assignment grading.",
         default_enabled=True,
         srs_refs=["I9"],
         settings=[
@@ -124,18 +137,16 @@ MODULES: list[Module] = [
         key="reward",
         label="Bandit reward",
         category="Reward",
-        description="score = a × student rating + (1 − a) × instructor rating. When the "
-        "instructor is unavailable the reward falls back to the student signal after a timeout.",
+        description="reward = student score, or (1 − b) × student + b × instructor when an instructor "
+        "rating arrives in time. Final once the window after the student's first score closes. "
+        "Feedback with no student score by the due date or submission is skipped.",
         default_enabled=True,
         srs_refs=["MAB6", "MAB7", "B7"],
         depends_on=["on_demand_feedback"],
         settings=[
-            Setting("mode", "enum", "Reward source", "combined",
-                    options=["combined", "student_only", "instructor_only"]),
-            Setting("student_weight", "float", "Student weight a", 0.5, min=0, max=1),
-            Setting("instructor_timeout_hours", "float", "Instructor timeout (h)", 72, min=0, max=24 * 60,
-                    help="After this, pending decisions fall back to the student signal."),
-            Setting("fallback_student_weight", "float", "Student weight after timeout", 1.0, min=0, max=1),
+            Setting("instructor_weight", "float", "Instructor weight b", 0.2, min=0, max=1),
+            Setting("window_hours", "float", "Window after student score (h)", 24, min=0, max=24 * 14,
+                    help="The student can change the score and the instructor can add a rating until it closes."),
         ],
     ),
     Module(

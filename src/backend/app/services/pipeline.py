@@ -127,15 +127,15 @@ def on_demand(db: Session, user: User, a: Assignment, cfg: Resolved, content: st
             db, a.course_id, context_key, arms, cfg.get("on_demand_feedback", "style_policy"),
             cfg.get("on_demand_feedback", "fixed_style"))
         reward_cfg = dict(cfg.config["reward"])
+        reward_cfg["student_score_enabled"] = cfg.on("student_score")
         reward_cfg["instructor_review_enabled"] = cfg.on("instructor_review")
-        reward_cfg["student_rating_enabled"] = cfg.on("student_rating")
         decision = BanditDecision(
             course_id=a.course_id, assignment_id=a.id, student_id=user.id, condition_id=cfg.condition_id,
             policy=used_policy, context=context, context_key=context_key, arm=style, probability=prob,
-            reward_config=reward_cfg,
-            reward_status="pending" if cfg.on("reward") else "skipped")
+            reward_config=reward_cfg, reward_status="pending")
         db.add(decision)
         db.flush()
+        bandit.refresh_reward(db, decision)  # skipped at once if reward / student score is off
         tmpl = db.get(FeedbackStyle, style)
         try:
             result = get_slm_provider().generate(FeedbackRequest(

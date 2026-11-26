@@ -396,7 +396,8 @@ interface BanditState {
   arms: { context_key: string; arm: string; alpha: number; beta: number; mean: number; pulls: number }[];
   pending_update: { context_key: string; arm: string; d_alpha: number; d_beta: number; n: number }[];
   decisions: { id: number; student: string; policy: string; arm: string; context_key: string; probability: number;
-    student_score: number | null; instructor_score: number | null; reward: number | null; reward_status: string;
+    student_score: number | null; instructor_score: number | null; instructor_counted: boolean;
+    window_closes_at: string | null; reward: number | null; reward_status: string;
     formula: string; applied: boolean; created_at: string }[];
 }
 
@@ -430,7 +431,7 @@ export function ResearchTab({ course }: { course: Course }) {
         <button className="btn outline" onClick={() => download("csv")}>{icons.download} Events CSV</button>
         <button className="btn outline" onClick={() => download("json")}>{icons.download} JSON</button>
       </div>
-      <div className="muted small" style={{ margin: "4px 0 12px" }}>Thompson Sampling posteriors per learner-level context. Rewards are folded in on a schedule or now.</div>
+      <div className="muted small" style={{ margin: "4px 0 12px" }}>Thompson Sampling posteriors per learner-level context. Reward = the student's 1–5 score (plus the instructor rating if it arrives within the window); final rewards are folded in on a schedule or now.</div>
       <Callout icon={icons.timer} color={st.data.pending_update.length ? "yellow" : undefined}>
         <div className="row">
           <div style={{ flex: 1 }}>
@@ -470,8 +471,9 @@ export function ResearchTab({ course }: { course: Course }) {
               <td>{d.arm}</td>
               <td>{d.context_key}</td>
               <td>{d.probability.toFixed(2)}</td>
-              <td>{d.student_score ?? "—"}</td>
-              <td>{d.instructor_score?.toFixed(2) ?? "—"}</td>
+              <td title={d.window_closes_at ? `Window closes ${new Date(d.window_closes_at).toLocaleString()}` : undefined}>{d.student_score?.toFixed(2) ?? "—"}</td>
+              <td title={d.instructor_score !== null && !d.instructor_counted ? "Not part of the reward (arrived after the window or the decision was skipped)" : undefined}>
+                {d.instructor_score?.toFixed(2) ?? "—"}{d.instructor_score !== null && !d.instructor_counted && d.reward_status !== "pending" ? " (archived)" : ""}</td>
               <td title={d.formula}>{d.reward?.toFixed(2) ?? "—"}</td>
               <td><Tag color={STATUS_COLORS[d.reward_status]}>{d.reward_status}{d.applied ? (" " + icons.check) : ""}</Tag></td>
             </tr>

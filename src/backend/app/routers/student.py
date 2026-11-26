@@ -259,18 +259,42 @@ class RatingIn(BaseModel):
 @router.post("/feedback/{feedback_id}/rating")
 def rate_feedback(feedback_id: int, body: RatingIn, user: User = Depends(require_student),
                   db: Session = Depends(get_db)):
+    """S11 👍/👎: research data only, never part of the bandit reward."""
     f = _own_feedback(db, user, feedback_id)
     a = db.get(Assignment, f.assignment_id)
     cfg = resolve_for_assignment(db, a, user.id, auto_assign=False)
     if not cfg.on("student_rating"):
         raise HTTPException(403, "Rating is turned off for this assignment.")
     f.student_helpful = body.helpful
-    if f.decision_id:
-        d = db.get(BanditDecision, f.decision_id)
-        d.student_score = bandit.student_score(body.helpful)
-        bandit.refresh_reward(d)
     db.commit()
     log_event(db, user, "feedback_rated", {"feedback_id": f.id, "helpful": body.helpful, "venue": f.venue},
+              a.course_id, a.id, f.condition_id)
+    return feedback_out(f)
+
+
+class ScoreIn(BaseModel):
+    score: int = Field(strict=True, ge=1, le=5)
+
+
+@router.post("/feedback/{feedback_id}/score")
+def score_feedback(feedback_id: int, body: ScoreIn, user: User = Depends(require_student),
+                   db: Session = Depends(get_db)):
+    """MAB6: the student's 1–5 score is the bandit reward. Re-scoring is allowed; the latest score
+    counts while the window is open, later changes are recorded but leave the reward unchanged."""
+    f = _own_feedback(db, user, feedback_id)
+    if f.venue != "on_demand":
+        raise HTTPException(422, "Only on-demand feedback can be scored.")
+    a = db.get(Assignment, f.assignment_id)
+    cfg = resolve_for_assignment(db, a, user.id, auto_assign=False)
+    if not cfg.on("student_score"):
+        raise HTTPException(403, "Scoring is turned off for this assignment.")
+    f.student_score = body.score
+    f.student_scored_at = now()
+    counted = False
+    if f.decision_id:
+        counted = bandit.record_student_score(db, db.get(BanditDecision, f.decision_id), body.score)
+    db.commit()
+    log_event(db, user, "feedback_scored", {"feedback_id": f.id, "score": body.score, "counted": counted},
               a.course_id, a.id, f.condition_id)
     return feedback_out(f)
 
@@ -332,6 +356,11 @@ def submit(assignment_id: int, body: SubmitIn, user: User = Depends(require_stud
     v = pipeline.snapshot(db, draft, "submit")
     sub = Submission(assignment_id=a.id, student_id=user.id, version_id=v.id, content=body.content)
     db.add(sub)
+    db.flush()
+    for d in db.scalars(select(BanditDecision).where(BanditDecision.assignment_id == a.id,
+                                                     BanditDecision.student_id == user.id,
+                                                     BanditDecision.reward_status == "pending")):
+        bandit.refresh_reward(db, d)  # unscored feedback is skipped at submission
     db.commit()
     log_event(db, user, "submitted", {"version_id": v.id, "words": len(body.content.split())},
               a.course_id, a.id, cfg.condition_id)

@@ -466,17 +466,17 @@ def student_work(assignment_id: int, student_id: int, user: User = Depends(requi
 
 
 def _eligible_submission_decisions(db: Session, submission: Submission):
+    """Bandit decisions that can take a submission-level instructor rating. Pending ones may count
+    toward the reward; already final / skipped ones are archived for MAB8 and M5."""
     pairs = db.execute(select(FeedbackItem, BanditDecision).join(
         BanditDecision, FeedbackItem.decision_id == BanditDecision.id).where(
         FeedbackItem.assignment_id == submission.assignment_id,
         FeedbackItem.student_id == submission.student_id,
         FeedbackItem.venue == "on_demand", FeedbackItem.instructor_rating.is_(None),
         BanditDecision.created_at <= submission.submitted_at,
-        BanditDecision.policy == "bandit", BanditDecision.applied.is_(False),
-        BanditDecision.reward_status == "pending", BanditDecision.instructor_score.is_(None))).all()
+        BanditDecision.policy == "bandit", BanditDecision.instructor_score.is_(None))).all()
     return [(f, d) for f, d in pairs if d.reward_config.get("enabled", True)
-            and d.reward_config.get("instructor_review_enabled", True)
-            and d.reward_config.get("mode", "combined") != "student_only"]
+            and d.reward_config.get("instructor_review_enabled", True)]
 
 
 def _submission_bandit_status(db: Session, submission: Submission):
@@ -507,16 +507,16 @@ def rate_submission_bandit(submission_id: int, body: SubmissionBanditRatingIn,
         return _submission_bandit_status(db, s)
     pairs = _eligible_submission_decisions(db, s)
     if not pairs:
-        raise HTTPException(409, "No pending bandit decisions accept an instructor rating for this submission.")
+        raise HTTPException(409, "No bandit decisions accept an instructor rating for this submission.")
     ids = [d.id for _, d in pairs]
     db.add(SubmissionBanditRating(submission_id=s.id, rating=body.rating, decision_ids=ids))
+    counted = 0
     for f, d in pairs:
         f.instructor_rating = body.rating
         f.instructor_rated_at = now()
-        d.instructor_score = bandit.instructor_score(body.rating)
-        bandit.refresh_reward(d)
+        counted += bandit.record_instructor_score(db, d, body.rating)
     log_event(db, user, "submission_bandit_rated", {"submission_id": s.id, "rating": body.rating,
-              "decision_ids": ids}, a.course_id, a.id, commit=False)
+              "decision_ids": ids, "counted": counted}, a.course_id, a.id, commit=False)
     try:
         db.commit()
     except IntegrityError:
@@ -617,14 +617,13 @@ def instructor_rate(feedback_id: int, body: InstructorRatingIn, user: User = Dep
         raise HTTPException(403, "Instructor feedback for bandit is disabled")
     f.instructor_rating = body.rating
     f.instructor_rated_at = now()
+    counted = False
     if f.decision_id:
-        d = db.get(BanditDecision, f.decision_id)
-        d.instructor_score = bandit.instructor_score(body.rating)
-        bandit.refresh_reward(d)
+        counted = bandit.record_instructor_score(db, db.get(BanditDecision, f.decision_id), body.rating)
     db.commit()
-    log_event(db, user, "instructor_rated", {"feedback_id": f.id, "rating": body.rating},
+    log_event(db, user, "instructor_rated", {"feedback_id": f.id, "rating": body.rating, "counted": counted},
               a.course_id, a.id, f.condition_id)
-    return {"ok": True}
+    return {"ok": True, "counted": counted}
 
 
 # ---------------------------------------------------------------- experiments (A/B tests)
@@ -817,8 +816,10 @@ def experiment_results(exp_id: int, user: User = Depends(require_instructor), db
             fq = fq.where(FeedbackItem.assignment_id == e.assignment_id)
         fb = db.scalars(fq).all()
         rated = [f for f in fb if f.student_helpful is not None]
-        decisions = db.scalars(select(BanditDecision).where(BanditDecision.condition_id == c.id,
-                                                            BanditDecision.reward_status == "final")).all()
+        scored = [f.student_score for f in fb if f.venue == "on_demand" and f.student_score is not None]
+        on_demand = [f for f in fb if f.venue == "on_demand"]
+        all_decisions = db.scalars(select(BanditDecision).where(BanditDecision.condition_id == c.id)).all()
+        decisions = [d for d in all_decisions if d.reward_status == "final"]
         sq = select(Submission).where(Submission.student_id.in_(sids) if sids else Submission.id == -1)
         if e.assignment_id:
             sq = sq.where(Submission.assignment_id == e.assignment_id)
@@ -836,6 +837,9 @@ def experiment_results(exp_id: int, user: User = Depends(require_instructor), db
             "realtime_popups": sum(f.venue == "realtime" for f in fb),
             "dismissed": sum(f.dismissed for f in fb),
             "helpful_rate": round(sum(f.student_helpful for f in rated) / len(rated), 3) if rated else None,
+            "mean_student_score": round(sum(scored) / len(scored), 2) if scored else None,
+            "scored_rate": round(len(scored) / len(on_demand), 3) if on_demand else None,
+            "skipped_rewards": sum(d.reward_status == "skipped" for d in all_decisions),
             "mean_instructor_rating": round(sum(inst) / len(inst), 2) if inst else None,
             "mean_reward": round(sum(d.reward for d in decisions) / len(decisions), 3) if decisions else None,
             "final_rewards": len(decisions),
@@ -937,6 +941,8 @@ def bandit_state(course_id: int, user: User = Depends(require_instructor), db: S
         "decisions": [{"id": d.id, "student": pseudo.get(d.student_id), "policy": d.policy, "arm": d.arm,
                        "context_key": d.context_key, "probability": round(d.probability, 3),
                        "student_score": d.student_score, "instructor_score": d.instructor_score,
+                       "instructor_counted": d.instructor_counted,
+                       "window_closes_at": iso(bandit.window_closes_at(d)) if d.student_scored_at else None,
                        "reward": d.reward, "reward_status": d.reward_status, "formula": d.reward_formula,
                        "applied": d.applied, "condition_id": d.condition_id, "created_at": iso(d.created_at)}
                       for d in decisions],

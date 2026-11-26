@@ -20,7 +20,7 @@ Status: ✅ done · 🟡 partial · ⬜ not started. "Module" is the `app/module
 | S8 | Request AI feedback; past feedback in side panel; never unrequested | P0 | ✅ (mock SLM) | `on_demand_feedback` | `pipeline.on_demand`, `FeedbackViews.tsx` |
 | S9 | Instructor-approved prompt on writing-process signals, after typing pauses, dismissible, frequency-limited | P1 | ✅ | `realtime_feedback` | `useRealtime.ts`, `pipeline.realtime`; popup anchored below the triggering text and hidden when typing resumes (dismiss reason logged) |
 | S10 | “Get Started” outline / guiding questions, never a completed response | P1 | ✅ | `get_started` | `/get-started`, `Assignment.get_started_content` |
-| S11 | Optionally rate feedback helpful / unhelpful | P0 | ✅ | `student_rating` | `/feedback/{id}/rating` |
+| S11 | Optionally rate feedback helpful / unhelpful | P0 | ✅ research data only, off by default; not part of the bandit reward | `student_rating` | `/feedback/{id}/rating` |
 | S12 | Check minimum word / paragraph count before submission | P2 | ✅ | `submission_rules` | `/submit` |
 | S13 | View grade and comments after release | P1 | ✅ | `grades` | `submission_out(include_grade)` |
 | S14 | Detect paste; explain if disabled, otherwise log with surrounding versions | P2 | ✅ | `paste_control` | `/paste` |
@@ -53,7 +53,7 @@ Status: ✅ done · 🟡 partial · ⬜ not started. "Module" is the `app/module
 | B4 | Manual saves, autosaves, version history, confirmed restore, submit | P0 | ✅ | `version_history` | `routers/student.py` |
 | B5 | Feedback request: personal context → allowed bandit style → SLM → validate | P0 | ✅ (mock SLM) | `on_demand_feedback` | `pipeline.on_demand` |
 | B6 | Manage pre-written prompts selected by instructor rules; Get Started | P1 | ✅ | `realtime_feedback.source`, `on_demand_feedback.source` | `FixedPrompt`, `_fixed_prompt_result` |
-| B7 | Store feedback, decisions, ratings, revision differences | P1 | 🟡 stored; feeding them back to SLM training is ML work (M5) | `reward` | `BanditDecision`, `FeedbackItem` |
+| B7 | Store feedback, decisions, ratings, revision differences | P1 | 🟡 stored (incl. instructor ratings archived after the reward window, `instructor_counted`); feeding them back to SLM training is ML work (M5) | `reward` | `BanditDecision`, `FeedbackItem` |
 | B8 | Block abuse such as rapid repeated SLM requests; grades released only when authorized | P1 | 🟡 cooldown + per-assignment cap; no account blocking | `on_demand_feedback.cooldown_seconds`, `max_requests` | `pipeline.on_demand` |
 | B9 | Record where students asked for feedback and where they revised; show instructors; guardrail outcome logged | P1 | 🟡 snapshots + guardrail status; no character-position tracking | — | `DraftVersion`, `FeedbackItem.guardrail_status` |
 | B10 | Update learner marks after each round (BKT) | P1 | ✅ | `learner_model` | `services/bkt.py` |
@@ -77,8 +77,8 @@ Status: ✅ done · 🟡 partial · ⬜ not started. "Module" is the `app/module
 | MAB3 | Contextual bandit picks a style per request | P0 | ✅ Thompson Sampling | `on_demand_feedback.style_policy` | `bandit.select_style` |
 | MAB4 | Pass chosen style to the SLM | P0 | ✅ | — | `FeedbackRequest.style`, `style_template` |
 | MAB5 | Fallback default style; instructors can disable or fix styles | P0 | ✅ | `fixed_style`, `allowed_styles` | `bandit.select_style` |
-| MAB6 | Score = a × student + (1 − a) × instructor (≤ 5 sampled) | P0 | ✅ + timeout fallback | `reward` | `bandit.refresh_reward` |
-| MAB7 | Update bandit from the log on a schedule | P1 | ✅ | — | `main._bandit_scheduler`, `bandit.apply_finalized` |
+| MAB6 | Reward from the student's response to each feedback; instructor rating optional and supplementary (11/11 meeting) | P0 | ✅ student 1–5 score; (1 − b) × student + b × instructor if the instructor rates within the window (b = 0.2, 24 h after first score); unscored by due date / submission → skipped | `student_score`, `reward` | `bandit.refresh_reward`, `/feedback/{id}/score` |
+| MAB7 | Update bandit from the log on a schedule | P1 | ✅ scheduler closes expired windows for every policy, applies bandit-policy rewards | — | `main._bandit_scheduler`, `bandit.apply_finalized` |
 | MAB8 | Offline check: bandit beats random and fixed styles | P1 | ⬜ (A/B template exists; offline eval script missing) | `style_policy` | — |
 | MAB9 | After REB, learn from student data, compare conditions | P3 | ⬜ | — | experiment results page is the starting point |
 

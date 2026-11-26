@@ -75,7 +75,8 @@ export interface Feedback {
   trigger: string | null;
   presentation: string;
   content: { summary: string; items: FeedbackContentItem[] };
-  student_helpful: boolean | null;
+  student_helpful: boolean | null; // 👍/👎, research only
+  student_score: number | null; // 1–5, bandit reward
   dismissed: boolean;
   created_at: string;
   // research fields (instructor only)

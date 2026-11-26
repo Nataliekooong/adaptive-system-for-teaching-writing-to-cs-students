@@ -19,7 +19,8 @@ def assignment_out(a: Assignment) -> dict:
 def feedback_out(f: FeedbackItem, research: bool = False) -> dict:
     out = {
         "id": f.id, "venue": f.venue, "source": f.source, "trigger": f.trigger, "presentation": f.presentation,
-        "content": f.content, "student_helpful": f.student_helpful, "dismissed": f.dismissed,
+        "content": f.content, "student_helpful": f.student_helpful, "student_score": f.student_score,
+        "dismissed": f.dismissed,
         "created_at": iso(f.created_at),
     }
     if research:

@@ -1,6 +1,6 @@
 import os
 import tempfile
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 
 _tmp = tempfile.mkdtemp()
 os.environ["DATABASE_URL"] = f"sqlite:///{_tmp}/test.db"
@@ -208,13 +208,15 @@ def test_assignment_bandit_rating_is_separate_and_applied_once(client):
     course, a = course_and_assignment(client, inst)
     base = f"/api/student/assignments/{a['id']}"
     client.patch(f"/api/instructor/assignments/{a['id']}", headers=inst, json={"config": {
-        "on_demand_feedback": {"cooldown_seconds": 0}, "submission_rules": {"enabled": False},
-        "reward": {"mode": "instructor_only"}}})
+        "on_demand_feedback": {"cooldown_seconds": 0}, "submission_rules": {"enabled": False}}})
     feedback = [client.post(f"{base}/feedback", headers=stu, json={"content": LONG_DRAFT}).json() for _ in range(3)]
     other_feedback = client.post(f"{base}/feedback", headers=other, json={"content": LONG_DRAFT}).json()
-    # One already finalized decision must not be overwritten by the overall rating.
+    client.post(f"/api/student/feedback/{feedback[1]['id']}/score", headers=stu, json={"score": 5})
+    client.post(f"/api/student/feedback/{feedback[2]['id']}/score", headers=stu, json={"score": 1})
+    # An individually rated decision is not overwritten by the overall rating.
     client.post(f"/api/instructor/feedback/{feedback[0]['id']}/rating", headers=inst, json={"rating": 1})
     sub = client.post(f"{base}/submit", headers=stu, json={"content": LONG_DRAFT}).json()
+    assert _decision_for(feedback[0]["id"]).reward_status == "skipped"  # never scored by the student
     grade_url = f"/api/instructor/submissions/{sub['id']}/grade"
     rating_url = f"/api/instructor/submissions/{sub['id']}/bandit-rating"
     assert client.post(grade_url, headers=inst, json={"grade": "85", "comments": "Good work"}).status_code == 200
@@ -227,12 +229,11 @@ def test_assignment_bandit_rating_is_separate_and_applied_once(client):
     assert result.json()["rating"] == 4 and result.json()["rated_decisions"] == 2
     for fb in feedback[1:]:
         decision = _decision_for(fb["id"])
-        assert decision.instructor_score == 0.75 and decision.reward == 0.75
-        assert decision.reward_status == "final"
-    assert _decision_for(feedback[0]["id"]).reward == 0
+        assert decision.instructor_score == 0.75 and decision.reward_status == "pending"  # window still open
     assert _decision_for(other_feedback["id"]).instructor_score is None
     assert client.post(rating_url, headers=inst, json={"rating": 4}).status_code == 200
     assert client.post(rating_url, headers=inst, json={"rating": 5}).status_code == 409
+    _close_window(feedback[1]["id"], feedback[2]["id"])
     with SessionLocal() as db:
         from app.models import Submission, SubmissionBanditRating
         from app.services.bandit import apply_finalized
@@ -240,17 +241,17 @@ def test_assignment_bandit_rating_is_separate_and_applied_once(client):
         assert saved.grade == "85" and saved.comments == "Good work" and not saved.released
         assert db.get(SubmissionBanditRating, sub["id"]).rating == 4
         updates = apply_finalized(db, course["id"])
-        assert sum(x["n"] for x in updates) == 3
-        assert sum(x["d_alpha"] for x in updates) == 1.5
+        assert sum(x["n"] for x in updates) == 2
+        assert abs(sum(x["d_alpha"] for x in updates) - (0.8 * 1 + 0.2 * 0.75 + 0.8 * 0 + 0.2 * 0.75)) < 1e-9
         assert apply_finalized(db, course["id"]) == []
+    assert _decision_for(feedback[1]["id"]).instructor_counted is True
     assert client.post(grade_url, headers=inst, json={"grade": "A-"}).status_code == 200
-    assert _decision_for(feedback[1]["id"]).reward == 0.75
+    assert abs(_decision_for(feedback[1]["id"]).reward - 0.95) < 1e-9
     # Assignment deletion also removes the associated rating record.
     assert client.delete(f"/api/instructor/assignments/{a['id']}", headers=inst).status_code == 200
 
 
 @pytest.mark.parametrize("config", [
-    {"reward": {"mode": "student_only"}},
     {"reward": {"enabled": False}},
     {"instructor_review": {"enabled": False}},
     {"on_demand_feedback": {"style_policy": "fixed"}},
@@ -297,7 +298,7 @@ def test_invalid_config_rejected_by_api(client):
     inst = login(client, "drlee")
     course, _ = course_and_assignment(client, inst)
     r = client.patch(f"/api/instructor/courses/{course['id']}", headers=inst,
-                     json={"config": {"reward": {"student_weight": 3}}})
+                     json={"config": {"reward": {"instructor_weight": 3}}})
     assert r.status_code == 422
 
 
@@ -315,8 +316,11 @@ def test_on_demand_feedback_rating_and_toggle_off(client):
     assert fb["venue"] == "on_demand" and fb["content"]["items"]
     assert "style" not in fb  # students never see experimental internals
 
-    r = client.post(f"/api/student/feedback/{fb['id']}/rating", headers=stu, json={"helpful": True})
-    assert r.json()["student_helpful"] is True
+    r = client.post(f"/api/student/feedback/{fb['id']}/score", headers=stu, json={"score": 4})
+    assert r.status_code == 200 and r.json()["student_score"] == 4
+    # 👍/👎 is off by default (kept for experiment groups that need it)
+    assert client.post(f"/api/student/feedback/{fb['id']}/rating", headers=stu,
+                       json={"helpful": True}).status_code == 403
 
     # Instructor switches the module off for this assignment → endpoint refuses.
     client.patch(f"/api/instructor/assignments/{a['id']}", headers=inst,
@@ -491,58 +495,187 @@ def _decision_for(feedback_id):
         return db.get(BanditDecision, f.decision_id)
 
 
-def test_reward_combined_then_bandit_update(client):
+def _close_window(*feedback_ids, hours=25):
+    """Move the student's first score back in time so the reward window has closed."""
+    with SessionLocal() as db:
+        from app.models import FeedbackItem
+        for fid in feedback_ids:
+            d = db.get(BanditDecision, db.get(FeedbackItem, fid).decision_id)
+            d.student_scored_at = d.student_scored_at - timedelta(hours=hours)
+        db.commit()
+
+
+def _refresh(feedback_id):
+    with SessionLocal() as db:
+        from app.models import FeedbackItem
+        from app.services.bandit import refresh_reward
+        d = db.get(BanditDecision, db.get(FeedbackItem, feedback_id).decision_id)
+        refresh_reward(db, d)
+        db.commit()
+    return _decision_for(feedback_id)
+
+
+def test_student_score_window_then_bandit_update(client):
     inst, stu = login(client, "drlee"), login(client, "priya")
     course, a = course_and_assignment(client, inst)
-    client.patch(f"/api/instructor/assignments/{a['id']}", headers=inst,
-                 json={"config": {"reward": {"student_weight": 0.25}}})
     fb = client.post(f"/api/student/assignments/{a['id']}/feedback", headers=stu, json={"content": LONG_DRAFT}).json()
+    d = _decision_for(fb["id"])
+    assert d.reward_config["window_hours"] == 24 and d.reward_config["instructor_weight"] == 0.2
+    score_url = f"/api/student/feedback/{fb['id']}/score"
+    for bad in [0, 6, 3.5, True]:
+        assert client.post(score_url, headers=stu, json={"score": bad}).status_code == 422
+    assert client.post(score_url, headers=stu, json={"score": 2}).status_code == 200
+    first = _decision_for(fb["id"]).student_scored_at
+    assert client.post(score_url, headers=stu, json={"score": 5}).status_code == 200  # latest score wins
+    d = _decision_for(fb["id"])
+    assert d.student_score == 1.0 and d.student_scored_at == first and d.reward_status == "pending"
+
+    # Instructor rating inside the window counts with weight b.
     client.put(f"/api/student/assignments/{a['id']}/draft", headers=stu,
                json={"content": LONG_DRAFT + "\n\nRevised paragraph.", "kind": "manual"})
-    client.post(f"/api/student/feedback/{fb['id']}/rating", headers=stu, json={"helpful": True})
-    assert _decision_for(fb["id"]).reward_status == "pending"  # waiting on instructor
-
     q = client.get(f"/api/instructor/courses/{course['id']}/review-queue", headers=inst).json()
     item = next(i for i in q["items"] if i["feedback"]["id"] == fb["id"])
     assert item["after"].endswith("Revised paragraph.")
-    client.post(f"/api/instructor/feedback/{fb['id']}/rating", headers=inst, json={"rating": 3})
-    d = _decision_for(fb["id"])
-    assert d.reward_status == "final" and abs(d.reward - (0.25 * 1 + 0.75 * 0.5)) < 1e-9
+    r = client.post(f"/api/instructor/feedback/{fb['id']}/rating", headers=inst, json={"rating": 3})
+    assert r.json()["counted"] is True
+    assert _decision_for(fb["id"]).reward_status == "pending"
 
+    _close_window(fb["id"])
     state = client.get(f"/api/instructor/courses/{course['id']}/bandit", headers=inst).json()
     assert state["pending_update"]
+    assert _decision_for(fb["id"]).reward_status == "pending"  # the preview changes nothing
     client.post(f"/api/instructor/courses/{course['id']}/bandit/update", headers=inst)
+    d = _decision_for(fb["id"])
+    assert d.reward_status == "final" and d.instructor_counted and abs(d.reward - (0.8 * 1 + 0.2 * 0.5)) < 1e-9
     state = client.get(f"/api/instructor/courses/{course['id']}/bandit", headers=inst).json()
     assert not state["pending_update"]
     arm = next(x for x in state["arms"] if x["arm"] == d.arm and x["context_key"] == d.context_key)
     assert arm["pulls"] == 1
 
+    # After the window: changes are recorded but the reward stays.
+    r = client.post(score_url, headers=stu, json={"score": 1})
+    assert r.status_code == 200 and r.json()["student_score"] == 1
+    r = client.post(f"/api/instructor/feedback/{fb['id']}/rating", headers=inst, json={"rating": 5})
+    assert r.json()["counted"] is False
+    d = _decision_for(fb["id"])
+    assert abs(d.reward - 0.9) < 1e-9 and d.student_score == 1.0
+    with SessionLocal() as db:
+        scored = db.scalars(select(EventLog).where(EventLog.type == "feedback_scored")).all()
+        assert [e.payload["counted"] for e in scored] == [True, True, False]
 
-def test_reward_falls_back_to_student_after_timeout(client):
+
+def test_instructor_rating_after_window_is_archived(client):
     inst, stu = login(client, "drlee"), login(client, "marcus")
     _, a = course_and_assignment(client, inst)
-    client.patch(f"/api/instructor/assignments/{a['id']}", headers=inst,
-                 json={"config": {"reward": {"instructor_timeout_hours": 1}}})
     fb = client.post(f"/api/student/assignments/{a['id']}/feedback", headers=stu, json={"content": LONG_DRAFT}).json()
-    client.post(f"/api/student/feedback/{fb['id']}/rating", headers=stu, json={"helpful": False})
-    with SessionLocal() as db:
-        d = db.get(BanditDecision, _decision_for(fb["id"]).id)
-        d.created_at = d.created_at - timedelta(hours=2)
-        db.commit()
-        from app.services.bandit import refresh_reward
-        refresh_reward(d)
-        assert d.reward_status == "final" and d.reward == 0.0 and "timeout" in d.reward_formula
+    client.post(f"/api/student/feedback/{fb['id']}/score", headers=stu, json={"score": 4})
+    _close_window(fb["id"])
+    r = client.post(f"/api/instructor/feedback/{fb['id']}/rating", headers=inst, json={"rating": 1})
+    assert r.json()["counted"] is False
+    d = _decision_for(fb["id"])
+    assert d.reward_status == "final" and d.reward == 0.75 and d.reward_formula == "student score"
+    assert d.instructor_score == 0.0 and d.instructor_counted is False
 
 
-def test_student_only_reward_mode(client):
+def test_window_hours_zero_finalizes_on_score(client):
     inst, stu = login(client, "drlee"), login(client, "jordan")
     _, a = course_and_assignment(client, inst)
     client.patch(f"/api/instructor/assignments/{a['id']}", headers=inst,
-                 json={"config": {"reward": {"mode": "student_only"}}})
+                 json={"config": {"reward": {"window_hours": 0}}})
     fb = client.post(f"/api/student/assignments/{a['id']}/feedback", headers=stu, json={"content": LONG_DRAFT}).json()
-    client.post(f"/api/student/feedback/{fb['id']}/rating", headers=stu, json={"helpful": True})
+    client.post(f"/api/student/feedback/{fb['id']}/score", headers=stu, json={"score": 3})
     d = _decision_for(fb["id"])
-    assert d.reward_status == "final" and d.reward == 1.0
+    assert d.reward_status == "final" and d.reward == 0.5
+
+
+def test_unscored_feedback_skipped_at_submission(client):
+    inst, stu = login(client, "drlee"), login(client, "sam")
+    _, a = course_and_assignment(client, inst)
+    base = f"/api/student/assignments/{a['id']}"
+    client.patch(f"/api/instructor/assignments/{a['id']}", headers=inst, json={"config": {
+        "on_demand_feedback": {"cooldown_seconds": 0}, "submission_rules": {"enabled": False}}})
+    unscored = client.post(f"{base}/feedback", headers=stu, json={"content": LONG_DRAFT}).json()
+    scored = client.post(f"{base}/feedback", headers=stu, json={"content": LONG_DRAFT}).json()
+    client.post(f"/api/student/feedback/{scored['id']}/score", headers=stu, json={"score": 5})
+    assert _decision_for(unscored["id"]).reward_status == "pending"  # no due date passed yet
+    client.post(f"{base}/submit", headers=stu, json={"content": LONG_DRAFT})
+    d = _decision_for(unscored["id"])
+    assert d.reward_status == "skipped" and d.reward_formula == "no student score before deadline"
+    # A score after the deadline is recorded but never counts.
+    r = client.post(f"/api/student/feedback/{unscored['id']}/score", headers=stu, json={"score": 5})
+    assert r.status_code == 200
+    assert _decision_for(unscored["id"]).student_score is None
+    # Scored before submission: the window keeps running and finalizes normally.
+    assert _decision_for(scored["id"]).reward_status == "pending"
+    _close_window(scored["id"])
+    assert _refresh(scored["id"]).reward == 1.0
+
+
+def test_unscored_feedback_skipped_after_due_date(client):
+    inst, stu = login(client, "drlee"), login(client, "taylor")
+    _, a = course_and_assignment(client, inst)
+    fb = client.post(f"/api/student/assignments/{a['id']}/feedback", headers=stu, json={"content": LONG_DRAFT}).json()
+    past = (datetime.now(timezone.utc) - timedelta(hours=1)).replace(tzinfo=None).isoformat()
+    assert client.patch(f"/api/instructor/assignments/{a['id']}", headers=inst,
+                        json={"due_date": past}).status_code == 200
+    d = _refresh(fb["id"])
+    assert d.reward_status == "skipped" and d.reward_formula == "no student score before deadline"
+
+
+def test_helpful_rating_is_research_only(client):
+    inst, stu = login(client, "drlee"), login(client, "alex")
+    _, a = course_and_assignment(client, inst)
+    client.patch(f"/api/instructor/assignments/{a['id']}", headers=inst,
+                 json={"config": {"student_rating": {"enabled": True}, "reward": {"window_hours": 0}}})
+    fb = client.post(f"/api/student/assignments/{a['id']}/feedback", headers=stu, json={"content": LONG_DRAFT}).json()
+    r = client.post(f"/api/student/feedback/{fb['id']}/rating", headers=stu, json={"helpful": True})
+    assert r.status_code == 200 and r.json()["student_helpful"] is True
+    d = _decision_for(fb["id"])
+    assert d.student_score is None and d.reward_status == "pending"
+
+
+def test_student_score_module_off_and_condition_override(client):
+    inst = login(client, "drlee")
+    course, _ = course_and_assignment(client, inst)
+    aid = client.post(f"/api/instructor/courses/{course['id']}/assignments", headers=inst,
+                      json={"title": "Score A/B"}).json()["id"]
+    # Off at the assignment layer: endpoint refuses, decision is skipped with a reason.
+    client.patch(f"/api/instructor/assignments/{aid}", headers=inst,
+                 json={"config": {"student_score": {"enabled": False}}})
+    stu = login(client, "priya")
+    fb = client.post(f"/api/student/assignments/{aid}/feedback", headers=stu, json={"content": LONG_DRAFT}).json()
+    detail = client.get(f"/api/student/assignments/{aid}", headers=stu).json()
+    assert detail["config"]["student_score"]["enabled"] is False
+    assert client.post(f"/api/student/feedback/{fb['id']}/score", headers=stu,
+                       json={"score": 5}).status_code == 403
+    d = _decision_for(fb["id"])
+    assert d.reward_status == "skipped" and d.reward_formula == "student score disabled"
+
+    # An experiment condition turns it back on for its students (condition beats assignment).
+    e = client.post(f"/api/instructor/courses/{course['id']}/experiments", headers=inst, json={
+        "name": "score on/off", "assignment_id": aid, "conditions": [
+            {"name": "scored", "config": {"student_score": {"enabled": True}}},
+            {"name": "unscored", "config": {}}]}).json()
+    client.patch(f"/api/instructor/experiments/{e['id']}", headers=inst, json={"status": "active"})
+    exp = client.post(f"/api/instructor/experiments/{e['id']}/assign", headers=inst, json={}).json()
+    scored_cond = next(c["id"] for c in exp["conditions"] if c["name"] == "scored")
+    parts = client.get(f"/api/instructor/experiments/{e['id']}/participants", headers=inst).json()
+    seen = set()
+    for p in parts:
+        s = login(client, p["username"])
+        f = client.post(f"/api/student/assignments/{aid}/feedback", headers=s, json={"content": LONG_DRAFT})
+        if f.status_code == 429:  # priya already asked inside the cooldown
+            continue
+        r = client.post(f"/api/student/feedback/{f.json()['id']}/score", headers=s, json={"score": 5})
+        on = p["condition_id"] == scored_cond
+        assert r.status_code == (200 if on else 403)
+        assert _decision_for(f.json()["id"]).reward_status == ("pending" if on else "skipped")
+        seen.add(on)
+    assert seen == {True, False}
+    results = client.get(f"/api/instructor/experiments/{e['id']}/results", headers=inst).json()
+    by_name = {r["name"]: r for r in results}
+    assert by_name["scored"]["scored_rate"] == 1.0 and by_name["scored"]["mean_student_score"] == 5
+    assert by_name["unscored"]["skipped_rewards"] >= 1
 
 
 def test_fixed_policy_and_fixed_prompt_source(client):

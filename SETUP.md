@@ -21,8 +21,9 @@ system defaults → course → assignment → experiment condition(s) → per-st
 | 💬 On-demand AI feedback | source (SLM / fixed prompts), style policy (bandit / random / fixed), allowed styles, cooldown, cap | S8, B5, MAB3–5, B8 |
 | ⚡ Real-time pop-up feedback | triggers (idle N s + sentence end, sentence settled, repeated deletion), context sentences, **presentation (popup / window / highlight)**, frequency limits | S9 |
 | 🎭 Feedback presentation | chat panel vs character | S15 |
-| 👍 Student rating · 🧑‍🏫 Instructor review | the two reward signals, review sample size ≤ 5 | S11, I9 |
-| 🎯 Bandit reward | `combined` / `student_only` / `instructor_only`, weight *a*, **instructor timeout → student-only fallback** | MAB6–7, B7 |
+| ⭐ Student score (1–5) | the bandit reward signal | MAB6 |
+| 👍 Student rating · 🧑‍🏫 Instructor review | 👍/👎 is research data only (off by default); instructor rating is an optional add-on, review sample size ≤ 5 | S11, I9 |
+| 🎯 Bandit reward | instructor weight *b* (0.2), **window after the student's first score (24 h)** | MAB6–7, B7 |
 | 🧠 Learner model (BKT) · 📋 Questionnaire | bandit context, initial profile | B3, B10, S2 |
 | 🚀 Get Started · 🕘 Version history · 📋 Paste · 📏 Submission rules · 🎓 Grades | workspace features | S5–S7, S10, S12–S14 |
 
@@ -35,8 +36,11 @@ and chat panel vs character.
 
 ### Feedback flows
 * **On-demand:** student → snapshot → bandit (Thompson Sampling per BKT context) → SLM → guardrail → panel.
-  Student revises, student rates, instructor rates a sampled before/after pair, reward = *a*·student + (1−*a*)·instructor.
-  Finalized rewards are folded into the posteriors on a schedule (`BANDIT_UPDATE_SECONDS`), or with *Apply now* in Research data.
+  Student revises and scores the feedback 1–5; the first score opens a 24 h window (the student may change the score).
+  If the instructor rates the feedback inside the window, reward = (1−*b*)·student + *b*·instructor, otherwise reward = student.
+  Feedback without a student score by the due date or submission is skipped. Instructor ratings after the window are kept
+  for evaluation only. Final rewards are folded into the posteriors on a schedule (`BANDIT_UPDATE_SECONDS`), or with
+  *Apply now* in Research data.
 * **Real-time:** the browser watches writing-process signals and sends only the last *N* sentences after typing pauses.
   Raw keystrokes are never logged. Only the trigger and the prompt shown are logged.
 
