@@ -1,0 +1,29 @@
+{
+    "cleaning_version": "V4",
+    "unique_assignments": 36,
+    "modified_assignments": 19,
+    "total_records": 30530,
+    "modified_records": 14501,
+    "unmodified_records": 16029,
+    "original_assignment_characters": 36599596,
+    "cleaned_assignment_characters": 31100579,
+    "removed_assignment_characters": 5499017,
+    "affected_record_percentage": 47.4975,
+    "assignment_character_reduction_percentage": 15.0248,
+    "validation": {
+        "status": "PASS",
+        "validated_records": 30530,
+        "record_count_preserved": true,
+        "schema_preserved": true,
+        "assignment_mapping_verified": true,
+        "id_preserved": true,
+        "config_hash_preserved": true,
+        "draft_preserved": true,
+        "feedback_preserved": true,
+        "all_non_assignment_fields_preserved": true
+    },
+    "original_file_size_bytes": 127992418,
+    "cleaned_file_size_bytes": 122683740,
+    "input_file": "draft_feedback_b1.jsonl",
+    "output_file": "draft_feedback_b1_cleaned.jsonl"
+}
